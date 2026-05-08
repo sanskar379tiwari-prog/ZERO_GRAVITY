@@ -6,9 +6,12 @@ import Link from "next/link";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface Job {
-  id: string; title: string; company: string; location: string;
+  job_id: string; title: string; company: string; location: string;
   remote: boolean; salary_min: number; salary_max: number;
   description: string; posted_at: string; url: string;
+  match_score?: number;
+  reasoning?: string[];
+  skills_overlap?: string[];
   score?: { match_score: number; ats_keywords?: string[]; reasoning: string[] };
 }
 
@@ -35,24 +38,33 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
   const { jobId } = use(params);
   const router = useRouter();
 
-  const [profile, setProfile]   = useState<Profile | null>(null);
-  const [job, setJob]           = useState<Job | null>(null);
+  const [profile] = useState<Profile | null>(() => {
+    if (typeof window === "undefined") return null;
+    const rawProfile = localStorage.getItem("zg_profile");
+    if (!rawProfile) return null;
+    return JSON.parse(rawProfile) as Profile;
+  });
+  const [job] = useState<Job | null>(() => {
+    if (typeof window === "undefined") return null;
+    const rawJobs = localStorage.getItem("zg_matched_jobs");
+    if (!rawJobs) return null;
+    const allJobs = JSON.parse(rawJobs) as Job[];
+    return allJobs.find((jj) => jj.job_id === jobId) ?? null;
+  });
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState<TailoredResult | null>(null);
   const [error, setError]       = useState("");
   const [activeTab, setActiveTab] = useState<"compare" | "keywords">("compare");
 
   useEffect(() => {
-    const p = localStorage.getItem("zg_profile");
-    const j = localStorage.getItem("zg_jobs");
-    if (!p || !j) { router.push("/"); return; }
-    const parsedProfile: Profile = JSON.parse(p);
-    const allJobs: Job[] = JSON.parse(j);
-    const found = allJobs.find(jj => jj.id === jobId);
-    if (!found) { router.push("/dashboard"); return; }
-    setProfile(parsedProfile);
-    setJob(found);
-  }, [jobId, router]);
+    if (!profile) {
+      router.push("/");
+      return;
+    }
+    if (!job) {
+      router.push("/dashboard");
+    }
+  }, [job, profile, router]);
 
   const tailorResume = async () => {
     if (!profile || !job) return;
@@ -96,7 +108,7 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
   );
 
   const ts = result?.tailored_sections;
-  const matchScore = job.score?.match_score ?? 0;
+  const matchScore = job.score?.match_score ?? job.match_score ?? 0;
   const scoreColor = matchScore >= 70 ? "#10d9a0" : matchScore >= 45 ? "#f59e0b" : "#ef4444";
 
   return (
@@ -317,18 +329,25 @@ function SectionBlock({ title, children }: { title: string; children: React.Reac
 }
 
 function getMockResult(profile: Profile, job: Job): TailoredResult {
+  const role = profile.roles?.[0] ?? "professional";
+  const profileSkills = Array.isArray(profile.skills) ? profile.skills : [];
+  const descriptionWords = (job.description ?? "")
+    .split(" ")
+    .filter(w => w.length > 5)
+    .slice(0, 12);
+
   return {
     tailored_sections: {
       name: profile.name,
       contact_line: `${profile.location} · github.com/${profile.name?.split(" ")[0]?.toLowerCase()}`,
-      summary: `Results-driven ${profile.roles?.[0] ?? "professional"} with ${profile.experience_years}+ years of experience, now targeting ${job.title} at ${job.company}. Proven ability to deliver scalable solutions aligned with modern engineering standards.`,
-      skills: [...(profile.skills ?? [])].sort(() => Math.random() - 0.5),
+      summary: `Results-driven ${role} with ${profile.experience_years}+ years of experience, now targeting ${job.title} at ${job.company}. Proven ability to deliver scalable solutions aligned with modern engineering standards.`,
+      skills: [...profileSkills].sort(() => Math.random() - 0.5),
       experience: [],
       education: [],
       projects: [],
-      ats_keywords_injected: (job.description ?? "").split(" ").filter(w => w.length > 5).slice(0, 12),
+      ats_keywords_injected: descriptionWords,
     },
     pdf_base64: "",
-    ats_keywords: (job.description ?? "").split(" ").filter(w => w.length > 5).slice(0, 12),
+    ats_keywords: descriptionWords,
   };
 }

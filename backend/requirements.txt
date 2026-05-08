@@ -10,3 +10,4 @@ reportlab
 requests==2.32.3
 supabase
 google-search-results
+apify-client
