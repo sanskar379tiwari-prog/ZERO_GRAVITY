@@ -40,7 +40,13 @@ TASK:
 RETURN ONLY RAW JSON:
 {schema}"""
 
-def extract(resume_text: str = "", github_url: str = "", role_preference: str = "") -> dict:
+def extract(
+    resume_text: str = "", 
+    github_url: str = "", 
+    role_preference: str = "",
+    location_preference: str = "",
+    remote_preference: str = ""
+) -> dict:
     ctx_parts = []
     
     if github_url:
@@ -72,7 +78,11 @@ def extract(resume_text: str = "", github_url: str = "", role_preference: str = 
             print(f"  > GitHub Scan Failed: {gh_data.get('github', {}).get('reason')}")
 
     if role_preference:
-        ctx_parts.append(f"Target Role: {role_preference}")
+        ctx_parts.append(f"USER PREFERENCE - ROLE: {role_preference}")
+    if location_preference:
+        ctx_parts.append(f"USER PREFERENCE - LOCATION: {location_preference}")
+    if remote_preference:
+        ctx_parts.append(f"USER PREFERENCE - REMOTE: {remote_preference}")
 
     full_prompt = PROMPT.format(
         resume_text=resume_text,

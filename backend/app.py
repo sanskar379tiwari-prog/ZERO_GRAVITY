@@ -10,6 +10,10 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# FORCE OVERRIDE to handle cases where old keys are stuck in the terminal environment
+load_dotenv(override=True)
 
 from agents import agent1_profile, agent2_jobs, agent3_scoring, agent4_tailor
 from agents import agent5_outreach, agent6_tracking, agent2_filter
@@ -74,7 +78,7 @@ app = FastAPI(
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
