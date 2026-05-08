@@ -23,7 +23,10 @@ export async function fetchMatchedJobs(
     throw new Error("Failed to fetch matched jobs");
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("MATCH API RESPONSE:", data);
+  console.log("LOCAL STORAGE PROFILE:", localStorage.getItem('zg_profile'));
+  return data;
 }
 
 export async function draftOutreachEmail(

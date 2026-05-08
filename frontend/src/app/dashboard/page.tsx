@@ -34,19 +34,7 @@ export default function DashboardPage() {
         const profileData = JSON.parse(rawProfile) as Profile;
         setProfile(profileData);
         
-        // Try to get already scored jobs from localStorage first (from the onboarding pipeline)
-        const savedJobs = localStorage.getItem("zg_jobs");
-        if (savedJobs) {
-          const parsedJobs = JSON.parse(savedJobs);
-          if (parsedJobs && parsedJobs.length > 0) {
-            console.log("Using cached jobs from localStorage");
-            setJobs(parsedJobs);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Fallback to fetching if no saved jobs or empty
+        // Always fetch fresh jobs to ensure AI scoring is up-to-date with new backend logic
         console.log("Fetching fresh jobs from API");
         const data = await fetchMatchedJobs(profileData);
         setJobs(data);
@@ -157,23 +145,31 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-slate-900">
-            {(job.skills_overlap || []).map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full bg-slate-100 px-3 py-1 text-sm"
-              >
-                {skill}
-              </span>
-            ))}
+            {Array.isArray(job.matched_skills) && job.matched_skills.length > 0 ? (
+              job.matched_skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-sm"
+                >
+                  {skill}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-slate-400">No technical skills listed</span>
+            )}
           </div>
 
           <div className="mt-4">
             <p className="font-medium text-slate-100">Why Matched:</p>
 
             <ul className="list-disc pl-5 text-sm text-slate-300/85">
-              {(job.reasoning || []).map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
+              {Array.isArray(job.reasoning) && job.reasoning.length > 0 ? (
+                job.reasoning.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))
+              ) : (
+                <li>Analysis pending for this role.</li>
+              )}
             </ul>
           </div>
 

@@ -67,13 +67,17 @@ def draft(profile: dict, job: dict) -> dict:
                 if key not in result:
                     result[key] = ""
             return result
-        except json.JSONDecodeError as e:
-            print(f"[Agent 5] JSON parse error (attempt {attempt + 1}): {e}")
         except Exception as e:
-            print(f"[Agent 5] Gemini error: {e}. Using fallback.")
-            break
+            if attempt < 2:
+                import time
+                wait_time = (attempt + 1) * 2
+                print(f"[Agent 5] Gemini Busy. Retrying in {wait_time}s... ({attempt+1}/3)")
+                time.sleep(wait_time)
+            else:
+                print(f"[Agent 5] Outreach failed: {e}")
+                raise e
 
-    return _fallback(profile, job)
+    return {} # Should not be reached due to raise
 
 
 def _fallback(profile: dict, job: dict) -> dict:
