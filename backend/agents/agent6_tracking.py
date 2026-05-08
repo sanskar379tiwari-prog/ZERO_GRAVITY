@@ -1,4 +1,4 @@
-<"""Agent 6 — Application Tracking & Interview Scheduling (Supabase)
+"""Agent 6 — Application Tracking & Interview Scheduling (Supabase)
 Manages application state and basic interview slot conflict detection.
 Uses Supabase for persistent storage on Render.
 """
@@ -29,8 +29,8 @@ else:
     print("⚠️ Agent 6: SUPABASE_URL/KEY missing. Using in-memory store (NON-PERSISTENT).")
 
 # Fallback stores if Supabase is unavailable
-_applications_mem: Dict[str, dict] = {}
-_interviews_mem: Dict[str, dict] = {}
+_applications_mem: Dict[str, Any] = {}
+_interviews_mem: Dict[str, Any] = {}
 
 VALID_STATUSES = {"Applied", "Pending", "Interview", "Rejected", "Offer"}
 
