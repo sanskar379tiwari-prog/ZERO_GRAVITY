@@ -1,18 +1,18 @@
 import os
 from dotenv import load_dotenv
+from typing import List, Optional
 
 # FORCE OVERRIDE to handle cases where old keys are stuck in the terminal environment
 load_dotenv(override=True)
 
-import os
 import json
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from agents import agent0_enrichment, agent1_profile, agent2_jobs, agent3_scoring, agent4_tailor
-from agents import agent5_outreach, agent6_tracking
+from agents import agent1_profile, agent2_jobs, agent3_scoring, agent4_tailor
+from agents import agent5_outreach, agent6_tracking, agent2_filter
 from agents.resume_parser import parse_resume
 from email_sender import send_email
 
@@ -29,53 +29,15 @@ def check_env():
     else:
         masked = key[:6] + "..." + key[-4:]
         print(f"✅ GEMINI_API_KEY loaded: {masked}")
-        
-        # LIST AVAILABLE MODELS
-        try:
-            from google import genai
-            client = genai.Client(api_key=key)
-            print("🔍 Fetching available models...")
-            models = client.models.list()
-            print("📦 Available Model IDs:")
-            for m in models:
-                if "generateContent" in m.supported_generation_methods:
-                    print(f"  - {m.name}")
-        except Exception as e:
-            print(f"⚠️ Could not list models: {e}")
 
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
 
-class ProfileSchema(BaseModel):
-    name: str = ""
-    skills: List[str] = []
-    experience_years: int = 0
-    roles: List[str] = []
-    location: str = ""
-    salary_expectation: dict = {"min": 0, "max": 0}
-    remote_preference: str = "flexible"
-
-class JobSchema(BaseModel):
-    id: str
-    title: str
-    company: str
-    location: str = ""
-    remote: bool = False
-    salary_min: int = 0
-    salary_max: int = 0
-    description: str
-    posted_at: str = ""
-    url: str = ""
-
 class MatchRequest(BaseModel):
     profile: dict
     query: Optional[str] = None
     location: Optional[str] = ""
-
-class ScoreRequest(BaseModel):
-    profile: dict
-    jobs: List[dict]
 
 class TailorRequest(BaseModel):
     profile: dict
@@ -105,11 +67,10 @@ class ApplicationCreate(BaseModel):
 
 app = FastAPI(
     title="Zero Gravity AI Job Orchestrator",
-    description="6-agent AI pipeline",
-    version="1.1.0",
+    description="Intelligent Opportunity Ranking System",
+    version="1.2.0",
 )
 
-# CORS setup with environment variable support
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -125,16 +86,12 @@ async def startup_event():
     print("!!! ZERO GRAVITY BACKEND RELOADED !!!")
     check_env()
     print(f"Model: gemini-3.1-flash-lite (FORCE)")
-    print(f"CORS: {allowed_origins}")
+    print("Architecture: Intelligent Opportunity Ranking (Career-Ops inspired)")
     print("!"*60 + "\n")
 
 @app.get("/")
 def read_root():
     return {"status": "online", "message": "Zero Gravity Backend API is running"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -162,112 +119,57 @@ async def extract_profile(
     )
     return profile
 
-@app.get("/jobs", tags=["agent-2"])
-def list_jobs(query: str = "software engineer", location: str = "", remote: str = ""):
-    jobs = agent2_jobs.fetch(query=query, location=location)
-    if remote.lower() == "true":
-        jobs = [j for j in jobs if j.get("remote")]
-    return jobs
-
 @app.post("/api/match", tags=["orchestrator"])
 async def dashboard_match(req: MatchRequest):
+    """
+    Intelligent Opportunity Ranking Pipeline (Career-Ops inspired)
+    1. Fetch batch (50-100 jobs)
+    2. Apply Hard Filters
+    3. Calculate Weighted AI Scores (Semantic + ATS + Exp)
+    4. Return Top 10 with AI Reasoning
+    """
     profile = req.profile
-    query = req.query or " ".join(profile.get("roles", [])[:1] + profile.get("skills", [])[:2]) or "software engineer"
+    location = req.location or profile.get("location", "")
     
-    # Standardize response shape exactly as requested
-    profile_skills = {str(s).strip().lower() for s in profile.get("skills", []) if isinstance(s, str)}
-    standardized = []
-    for job in scored:
-        score_obj = job.get("score", {})
-        job_skills = [s for s in job.get("skills", []) if isinstance(s, str)]
+    # 1. Generate search variants
+    queries = agent2_jobs.generate_queries(profile)
+    if req.query:
+        queries.insert(0, req.query)
         
-        standardized.append({
+    # 2. Fetch Large Scale (50 jobs)
+    print(f"[Orchestrator] Fetching large-scale batch for {profile.get('name')}...")
+    raw_jobs = agent2_jobs.fetch_batch(queries=queries, location=location, limit=50)
+    
+    # 3. Apply Hard Filters
+    filtered_jobs = agent2_filter.apply_hard_filters(raw_jobs, profile)
+    
+    # 4. Intelligent Scoring & Ranking
+    # (Includes Semantic Similarity and Top 10 AI Reasoning)
+    ranked_jobs = agent3_scoring.score_all(profile, filtered_jobs)
+    
+    # 5. Standardize response for frontend
+    final_matches = []
+    for job in ranked_jobs:
+        final_matches.append({
             "job_id": str(job.get("id", "")),
             "title": str(job.get("title", "")),
             "company": str(job.get("company", "")),
             "location": str(job.get("location", "")),
-            "match_score": int(score_obj.get("match_score", 0)),
-            "reasoning": score_obj.get("reasoning", []),
-            "skills_overlap": [s for s in job_skills if s.strip().lower() in profile_skills],
-            "description": str(job.get("description", "")),
-            "url": str(job.get("url", "")),
-            "remote": bool(job.get("remote", False)),
-            "posted_at": str(job.get("posted_at", "")),
-            "salary_min": int(job.get("salary_min", 0) or 0),
-            "salary_max": int(job.get("salary_max", 0) or 0),
-        })
-
-    return JSONResponse(content=standardized)
-
-
-# ---------------------------------------------------------------------------
-# Dashboard Match API
-# POST /api/match
-# ---------------------------------------------------------------------------
-
-@app.post("/api/match", tags=["dashboard"])
-async def dashboard_match(payload: dict):
-    """
-    Build dashboard-ready matched jobs in one call.
-
-    Body:
-      {
-        "profile": {...},
-        "query": "frontend engineer",   # optional
-        "location": "Remote"            # optional
-      }
-
-    Returns:
-      [
-        {
-          "job_id": "...",
-          "title": "...",
-          "company": "...",
-          "location": "...",
-          "match_score": 91,
-          "reasoning": [...],
-          "skills_overlap": [...]
-        }
-      ]
-    """
-    profile = payload.get("profile") or payload.get("profiles")
-    query = payload.get("query", "software engineer")
-    location = payload.get("location", "")
- 
-    jobs = agent2_jobs.fetch(query=query, location=location)
-    print(f"[DEBUG] /api/match profile skills: {profile.get('skills', [])[:5]}")
-    scored_jobs = agent3_scoring.score_all(profile, jobs)
-    print(f"[DEBUG] /api/match found {len(scored_jobs)} jobs from Agent 3 (AI Scored)")
-
-    matches = []
-    for job in scored_jobs:
-        score_obj = job.get("score", {})
-        matches.append({
-            "job_id": str(job.get("job_id", f"job-{idx + 1}")),
-            "title": str(job.get("title", "Untitled Role")),
-            "company": str(job.get("company", "Unknown Company")),
-            "location": str(job.get("location", "Unknown")),
-            "description": str(job.get("description", "")),
-            "url": str(job.get("url", "")),
-            "remote": bool(job.get("remote", False)),
-            "posted_at": str(job.get("posted_at", "")),
-            "salary_min": int(job.get("salary_min", 0) or 0),
-            "salary_max": int(job.get("salary_max", 0) or 0),
-            
-            # Standardized Schema Trace Keys (Guaranteed Lists)
             "match_score": int(job.get("match_score", 0)),
-            "matched_skills": skills_list,
-            "reasoning": reasoning_list
+            "semantic_score": float(job.get("semantic_score", 0.0)),
+            "ats_score": float(job.get("ats_score", 0.0)),
+            "reasoning": job.get("reasoning", []),
+            "skills_overlap": job.get("skills_overlap", []), # Filled by frontend or scoring
+            "description": str(job.get("description", "")),
+            "url": str(job.get("url", "")),
+            "remote": bool(job.get("remote", False)),
+            "posted_at": str(job.get("posted_at", "")),
+            "salary_min": int(job.get("salary_min", 0) or 0),
+            "salary_max": int(job.get("salary_max", 0) or 0),
+            "source": str(job.get("source", "Unknown")),
         })
-
-    print(f"[DEBUG] Sending {len(matches)} matches to frontend with standardized keys.")
-    return JSONResponse(content=matches)
-
-
-# ---------------------------------------------------------------------------
-# Agent 4 — Resume Tailoring
-# POST /tailor-resume
-# ---------------------------------------------------------------------------
+        
+    return JSONResponse(content=final_matches)
 
 @app.post("/tailor-resume", tags=["agent-4"])
 async def tailor_resume(req: TailorRequest):
@@ -305,32 +207,3 @@ async def update_app(app_id: str, payload: dict = Body(...)):
     if not updated:
         raise HTTPException(status_code=404, detail="Application not found")
     return updated
-
-@app.post("/orchestrate/pipeline", tags=["orchestrator"])
-async def full_pipeline(
-    resume_pdf: UploadFile = File(...),
-    github_url: str = Form(default=""),
-    role_preference: str = Form(default=""),
-    location_preference: str = Form(default=""),
-    remote_preference: str = Form(default=""),
-):
-    content = await resume_pdf.read()
-    resume_text = parse_resume(content, format="pdf")
-    
-    profile = agent1_profile.extract(
-        resume_text=resume_text,
-        github_url=github_url,
-        role_preference=role_preference,
-        location_preference=location_preference,
-        remote_preference=remote_preference,
-    )
-    
-    query = role_preference or " ".join(profile.get("roles", [])[:1] + profile.get("skills", [])[:2]) or "software engineer"
-    jobs = agent2_jobs.fetch(query=query, location=location_preference)
-    scored = agent3_scoring.score_all(profile, jobs)
-    
-    return {
-        "profile": profile,
-        "jobs": jobs,
-        "scored_matches": scored
-    }

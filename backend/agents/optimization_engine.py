@@ -12,7 +12,7 @@ class OptimizationEngine:
     
     MAX_ITERATIONS = 2  # Keep LLM calls efficient
     
-    def __init__(self, client: genai.Client, model: str = "gemma-3-27b-it"):
+    def __init__(self, client: genai.Client, model: str = "gemini-3.1-flash-lite"):
         self.client = client
         self.model = model
     
