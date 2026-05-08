@@ -142,8 +142,8 @@ export default function DashboardPage() {
       )}
 
       <div className="mx-auto space-y-4 max-w-6xl">
-      {jobs.map((job) => (
-        <div key={job.job_id} className="rounded-2xl border border-slate-700/60 bg-[#061a2c]/85 p-6 shadow-sm">
+      {jobs.map((job, idx) => (
+        <div key={job.job_id || `job-${idx}`} className="rounded-2xl border border-slate-700/60 bg-[#061a2c]/85 p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold">{job.title}</h2>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
-              href={`/resume-compare/${job.job_id || (job as any).id}`}
+              href={`/resume-compare/${encodeURIComponent(job.job_id || (job as any).id)}`}
               className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-2 text-sm text-cyan-100 transition hover:bg-slate-800/80"
             >
               Tailor Resume

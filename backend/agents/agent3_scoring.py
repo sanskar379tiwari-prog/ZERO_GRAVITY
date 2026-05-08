@@ -50,25 +50,28 @@ def score_job(profile: dict, job: dict) -> dict:
 
 # ── sub-scores ────────────────────────────────────────────────────────────────
 
+from agents.filters import KeywordMatcher
+
 def _skill_score(profile: dict, job: dict) -> float:
-    candidate = {s.lower() for s in profile.get("skills", [])}
-    text = (job.get("title", "") + " " + job.get("description", "")).lower()
-    if not candidate:
+    job_text = (job.get("title", "") + " " + job.get("description", "")).lower()
+    profile_text = " ".join(profile.get("skills", [])).lower()
+    
+    if not profile_text or not job_text:
         return 50.0
-    hits = sum(1 for s in candidate if s in text)
-    return min(100.0, (hits / len(candidate)) * 100 * 1.5)
+        
+    score = KeywordMatcher.match_score(job_text, profile_text)
+    return min(100.0, score * 200.0) # Scale up cosine similarity
 
 
 def _ats_score(profile: dict, job: dict) -> float:
-    profile_text = " ".join(
-        profile.get("skills", []) + profile.get("roles", [])
-    ).lower()
+    profile_text = " ".join(profile.get("skills", []) + profile.get("roles", [])).lower()
     job_text = job.get("description", "").lower()
-    pw = set(re.findall(r'\b\w{3,}\b', profile_text))
-    jw = set(re.findall(r'\b\w{3,}\b', job_text))
-    if not pw or not jw:
+    
+    if not profile_text or not job_text:
         return 50.0
-    return min(100.0, len(pw & jw) / max(len(jw), 1) * 200)
+        
+    score = KeywordMatcher.match_score(job_text, profile_text)
+    return min(100.0, score * 200.0)
 
 
 def _location_score(profile: dict, job: dict) -> float:

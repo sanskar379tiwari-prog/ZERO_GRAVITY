@@ -8,9 +8,11 @@ from google import genai
 from dotenv import load_dotenv
 from usage import tracker
 
-load_dotenv()
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-1.5-flash"
+def get_client():
+    load_dotenv(override=True)
+    return genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+
+MODEL = "gemini-3.1-flash-lite"
 
 PROMPT = """You are an expert career coach and copywriter.
 Write a personalized cold-outreach email from a candidate to a recruiter/hiring manager.
@@ -48,30 +50,30 @@ def generate(profile: dict, job: dict) -> dict:
         description=job.get("description", "")[:1200],
     )
 
-    model = MODEL
-    for attempt in range(3):
-        try:
-            tracker.log_call("Gemini (3.1 Flash-Lite)")
-            response = _client.models.generate_content(
-                model=model,
-                contents=prompt,
-            )
-            raw = response.text.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```", 2)[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            result = json.loads(raw.strip())
-            # Ensure all keys present
-            for key in ("subject", "email_body", "short_cover"):
-                if key not in result:
-                    result[key] = ""
-            return result
-        except json.JSONDecodeError as e:
-            print(f"[Agent 5] JSON parse error (attempt {attempt + 1}): {e}")
-        except Exception as e:
-            print(f"[Agent 5] Gemini error: {e}. Using fallback.")
-            break
+    try:
+        client = get_client()
+        tracker.log_call(f"Gemini ({MODEL})")
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+        )
+        raw = response.text.strip()
+        
+        # Extract JSON from markdown fences if present
+        if "```" in raw:
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        
+        result = json.loads(raw.strip())
+        
+        # Ensure all keys present
+        for key in ("subject", "email_body", "short_cover"):
+            if key not in result:
+                result[key] = ""
+        return result
+    except Exception as e:
+        print(f"[Agent 5] Error: {e}. Using fallback.")
 
     return _fallback(profile, job)
 
