@@ -107,6 +107,8 @@ def _collect_github(github_url: str) -> dict:
 
 
 def _collect_linkedin(linkedin_url: str) -> dict:
+    return {"status": "skipped", "reason": "LinkedIn scraper disabled per user request"}
+
     if not linkedin_url.strip():
         return {"status": "skipped", "reason": "No LinkedIn URL provided"}
 
