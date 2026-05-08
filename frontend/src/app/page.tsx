@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -11,6 +11,109 @@ const STEPS = [
   { id: 4, label: "Scoring Matches",     icon: "⚡" },
 ];
 
+interface Profile {
+  name: string;
+  skills: string[];
+  experience_years: number;
+  roles: string[];
+  location: string;
+  salary_expectation: { min: number; max: number };
+  remote_preference: string;
+  github_url?: string;
+  linkedin_about?: string;
+  linkedin_url?: string;
+}
+
+interface CollectedGithub {
+  status: string;
+  username?: string;
+  public_repos?: number;
+  followers?: number;
+  total_stars?: number;
+  top_languages?: [string, number][];
+  top_repos?: { name: string; stars: number; language?: string }[];
+  reason?: string;
+}
+
+interface CollectedLinkedin {
+  status: string;
+  full_name?: string;
+  headline?: string;
+  location?: string;
+  reason?: string;
+}
+
+interface CollectedData {
+  github?: CollectedGithub;
+  linkedin?: CollectedLinkedin;
+}
+
+function extractSkillsFromText(text: string): string[] {
+  const seedSkills = [
+    "React", "Next.js", "TypeScript", "JavaScript", "Python", "FastAPI",
+    "Node.js", "SQL", "MongoDB", "AWS", "Docker", "Git",
+  ];
+  const lower = text.toLowerCase();
+  return seedSkills.filter((skill) => lower.includes(skill.toLowerCase()));
+}
+
+function buildProfileFromLinks(input: {
+  role: string;
+  location: string;
+  remote: string;
+  github: string;
+  linkedin: string;
+  linkedinUrl: string;
+}): Profile {
+  const inferredSkills = extractSkillsFromText(`${input.linkedin} ${input.github}`);
+  return {
+    name: "Candidate",
+    skills: inferredSkills.length ? inferredSkills : ["Communication", "Problem Solving"],
+    experience_years: 1,
+    roles: [input.role || "Software Engineer"],
+    location: input.location || "Remote",
+    salary_expectation: { min: 0, max: 0 },
+    remote_preference: input.remote,
+    github_url: input.github || undefined,
+    linkedin_about: input.linkedin || undefined,
+    linkedin_url: input.linkedinUrl || undefined,
+  };
+}
+
+function extractGithubUsername(githubUrl: string): string {
+  if (!githubUrl.trim()) return "";
+  try {
+    const parsed = new URL(githubUrl.trim());
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    return parts[0] ?? "";
+  } catch {
+    const cleaned = githubUrl.replace("https://", "").replace("http://", "");
+    const parts = cleaned.split("/").filter(Boolean);
+    return parts[1] ?? parts[0] ?? "";
+  }
+}
+
+function extractTopKeywords(text: string, limit = 8): string[] {
+  const stop = new Set([
+    "the", "and", "with", "that", "from", "this", "have", "your", "for", "are",
+    "you", "our", "was", "were", "will", "their", "about", "into", "using", "used",
+    "over", "under", "than", "then", "here", "there", "where", "when", "what",
+  ]);
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !stop.has(w));
+
+  const counts = new Map<string, number>();
+  for (const w of words) counts.set(w, (counts.get(w) ?? 0) + 1);
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([w]) => w);
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -18,6 +121,7 @@ export default function OnboardingPage() {
   const [file, setFile]               = useState<File | null>(null);
   const [dragging, setDragging]       = useState(false);
   const [linkedin, setLinkedin]       = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [github, setGithub]           = useState("");
   const [role, setRole]               = useState("");
   const [location, setLocation]       = useState("");
@@ -25,6 +129,23 @@ export default function OnboardingPage() {
   const [loading, setLoading]         = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError]             = useState("");
+  const [collectLoading, setCollectLoading] = useState(false);
+  const [collectError, setCollectError] = useState("");
+  const [collectedData, setCollectedData] = useState<CollectedData | null>(null);
+  const preview = useMemo(() => {
+    const githubUsername = extractGithubUsername(github);
+    const inferredSkills = extractSkillsFromText(`${linkedin} ${github}`);
+    const linkedinKeywords = extractTopKeywords(linkedin, 6);
+    return {
+      githubUsername,
+      inferredSkills,
+      linkedinKeywords,
+      role: role.trim() || "Not provided",
+      location: location.trim() || "Not provided",
+      remotePreference: remote,
+      hasAnyInput: Boolean(github.trim() || linkedin.trim() || linkedinUrl.trim() || role.trim() || location.trim()),
+    };
+  }, [github, linkedin, linkedinUrl, role, location, remote]);
 
   // ── drag-drop ──────────────────────────────────────────────────────────────
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -43,23 +164,34 @@ export default function OnboardingPage() {
 
   // ── pipeline ───────────────────────────────────────────────────────────────
   const runPipeline = async () => {
-    if (!file) { setError("Please upload your resume PDF first."); return; }
+    const canRunLinksOnly = Boolean(linkedin.trim() || github.trim() || role.trim());
+    if (!file && !canRunLinksOnly) {
+      setError("Upload resume OR provide GitHub/LinkedIn/role.");
+      return;
+    }
     setError(""); setLoading(true); setCurrentStep(1);
 
     try {
-      // Step 1+2: Upload + extract profile
-      const form = new FormData();
-      form.append("resume_pdf", file);
-      if (linkedin)  form.append("linkedin_about", linkedin);
-      if (github)    form.append("github_url", github);
-      if (role)      form.append("role_preference", role);
-      if (location)  form.append("location_preference", location);
-      if (remote)    form.append("remote_preference", remote);
+      let profile: Profile;
+      if (file) {
+        // Step 1+2: Upload + extract profile
+        const form = new FormData();
+        form.append("resume_pdf", file);
+        if (linkedin) form.append("linkedin_about", linkedin);
+        if (github) form.append("github_url", github);
+        if (role) form.append("role_preference", role);
+        if (location) form.append("location_preference", location);
+        if (remote) form.append("remote_preference", remote);
 
-      setCurrentStep(2);
-      const profileRes = await fetch(`${API}/extract-profile`, { method: "POST", body: form });
-      if (!profileRes.ok) throw new Error("Profile extraction failed");
-      const profile = await profileRes.json();
+        setCurrentStep(2);
+        const profileRes = await fetch(`${API}/extract-profile`, { method: "POST", body: form });
+        if (!profileRes.ok) throw new Error("Profile extraction failed");
+        profile = await profileRes.json();
+      } else {
+        // Links-only mode (for quick testing without PDF upload)
+        setCurrentStep(2);
+        profile = buildProfileFromLinks({ role, location, remote, github, linkedin, linkedinUrl });
+      }
 
       // Step 3: Fetch jobs
       setCurrentStep(3);
@@ -77,14 +209,47 @@ export default function OnboardingPage() {
       });
       const scoredJobs = scoreRes.ok ? await scoreRes.json() : jobs.map((j: object) => ({ ...j, score: null }));
 
+      // Keep matched jobs store in sync for compare page routing
+      const matchRes = await fetch(`${API}/api/match`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile, query, location: profile.location || location || "" }),
+      });
+      const matchedJobs = matchRes.ok ? await matchRes.json() : [];
+
       // Store in localStorage and navigate
       localStorage.setItem("zg_profile", JSON.stringify(profile));
       localStorage.setItem("zg_jobs", JSON.stringify(scoredJobs));
+      localStorage.setItem("zg_matched_jobs", JSON.stringify(matchedJobs));
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(`Pipeline error: ${msg}. Try again.`);
       setLoading(false); setCurrentStep(0);
+    }
+  };
+
+  const collectFromLinks = async () => {
+    if (!github.trim() && !linkedinUrl.trim()) {
+      setCollectError("Add at least one GitHub or LinkedIn profile URL.");
+      return;
+    }
+    setCollectError("");
+    setCollectLoading(true);
+    try {
+      const res = await fetch(`${API}/collect-link-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ github_url: github, linkedin_url: linkedinUrl }),
+      });
+      if (!res.ok) throw new Error(`Collect failed: ${res.status}`);
+      const data = (await res.json()) as CollectedData;
+      setCollectedData(data);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      setCollectError(msg);
+    } finally {
+      setCollectLoading(false);
     }
   };
 
@@ -111,7 +276,7 @@ export default function OnboardingPage() {
             Apply Faster.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-sm text-slate-300/80 md:text-base">
-            Minimal workflow: upload your resume, run the AI pipeline, and move directly to your personalized job dashboard.
+            Minimal workflow: upload your resume or just use links, run the AI pipeline, and move directly to your personalized job dashboard.
           </p>
         </div>
 
@@ -132,7 +297,7 @@ export default function OnboardingPage() {
             }}
           >
             <p className="text-base font-medium text-slate-100">
-              {file ? `Selected: ${file.name}` : "Drop resume PDF or click to upload"}
+              {file ? `Selected: ${file.name}` : "Drop resume PDF or click to upload (optional)"}
             </p>
             {file && (
               <p className="mt-1 text-sm text-slate-300/75">
@@ -164,6 +329,13 @@ export default function OnboardingPage() {
               value={github}
               onChange={(e) => setGithub(e.target.value)}
             />
+            <input
+              id="linkedin-url-input"
+              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              placeholder="LinkedIn Profile URL (optional)"
+              value={linkedinUrl}
+              onChange={(e) => setLinkedinUrl(e.target.value)}
+            />
             <select
               id="remote-select"
               className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
@@ -185,6 +357,106 @@ export default function OnboardingPage() {
             value={linkedin}
             onChange={(e) => setLinkedin(e.target.value)}
           />
+
+          <div className="rounded-xl border border-cyan-300/25 bg-slate-900/45 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200/85">
+              Collected Info Preview
+            </p>
+            {!preview.hasAnyInput ? (
+              <p className="mt-2 text-sm text-slate-300/75">
+                Add GitHub/LinkedIn/role/location to preview what will be used in matching.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <p className="text-slate-300/85">
+                    <span className="text-slate-400">Role:</span> {preview.role}
+                  </p>
+                  <p className="text-slate-300/85">
+                    <span className="text-slate-400">Location:</span> {preview.location}
+                  </p>
+                  <p className="text-slate-300/85">
+                    <span className="text-slate-400">Remote:</span> {preview.remotePreference}
+                  </p>
+                  <p className="text-slate-300/85">
+                    <span className="text-slate-400">GitHub user:</span> {preview.githubUsername || "Not detected"}
+                  </p>
+                </div>
+
+                {preview.inferredSkills.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">Inferred skills</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {preview.inferredSkills.map((skill) => (
+                        <span key={skill} className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-100">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {preview.linkedinKeywords.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">LinkedIn keywords</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {preview.linkedinKeywords.map((kw) => (
+                        <span key={kw} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-900">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {collectedData?.github && (
+                  <div>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">GitHub API data</p>
+                    {collectedData.github.status === "ok" ? (
+                      <div className="space-y-1 text-slate-300/90">
+                        <p>
+                          <span className="text-slate-400">Username:</span> {collectedData.github.username}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">Repos:</span> {collectedData.github.public_repos} ·{" "}
+                          <span className="text-slate-400">Followers:</span> {collectedData.github.followers} ·{" "}
+                          <span className="text-slate-400">Stars:</span> {collectedData.github.total_stars}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-300">GitHub: {collectedData.github.reason ?? "Not available"}</p>
+                    )}
+                  </div>
+                )}
+
+                {collectedData?.linkedin && (
+                  <div>
+                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">LinkedIn (Apify)</p>
+                    {collectedData.linkedin.status === "ok" ? (
+                      <div className="space-y-1 text-slate-300/90">
+                        <p><span className="text-slate-400">Name:</span> {collectedData.linkedin.full_name || "—"}</p>
+                        <p><span className="text-slate-400">Headline:</span> {collectedData.linkedin.headline || "—"}</p>
+                        <p><span className="text-slate-400">Location:</span> {collectedData.linkedin.location || "—"}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-300">LinkedIn: {collectedData.linkedin.reason ?? "Not available"}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={collectFromLinks}
+                disabled={collectLoading}
+                className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-1.5 text-xs font-medium text-cyan-100 transition hover:bg-slate-800/70 disabled:opacity-60"
+              >
+                {collectLoading ? "Collecting..." : "Collect From Links"}
+              </button>
+              {collectError && <span className="text-xs text-red-300">{collectError}</span>}
+            </div>
+          </div>
 
           {error && (
             <div className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
