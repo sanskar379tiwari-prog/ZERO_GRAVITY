@@ -1,15 +1,14 @@
 import os
+import json
+from typing import List, Optional
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Body
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
 # FORCE OVERRIDE to handle cases where old keys are stuck in the terminal environment
 load_dotenv(override=True)
-
-import os
-import json
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 from agents import agent0_enrichment, agent1_profile, agent2_jobs, agent3_scoring, agent4_tailor
 from agents import agent5_outreach, agent6_tracking
@@ -29,19 +28,6 @@ def check_env():
     else:
         masked = key[:6] + "..." + key[-4:]
         print(f"✅ GEMINI_API_KEY loaded: {masked}")
-        
-        # LIST AVAILABLE MODELS
-        try:
-            from google import genai
-            client = genai.Client(api_key=key)
-            print("🔍 Fetching available models...")
-            models = client.models.list()
-            print("📦 Available Model IDs:")
-            for m in models:
-                if "generateContent" in m.supported_generation_methods:
-                    print(f"  - {m.name}")
-        except Exception as e:
-            print(f"⚠️ Could not list models: {e}")
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -109,8 +95,6 @@ app = FastAPI(
     version="1.1.0",
 )
 
-# CORS setup with environment variable support
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -124,8 +108,6 @@ async def startup_event():
     print("\n" + "!"*60)
     print("!!! ZERO GRAVITY BACKEND RELOADED !!!")
     check_env()
-    print(f"Model: gemini-3.1-flash-lite (FORCE)")
-    print(f"CORS: {allowed_origins}")
     print("!"*60 + "\n")
 
 @app.get("/")
@@ -173,6 +155,13 @@ def list_jobs(query: str = "software engineer", location: str = "", remote: str 
 async def dashboard_match(req: MatchRequest):
     profile = req.profile
     query = req.query or " ".join(profile.get("roles", [])[:1] + profile.get("skills", [])[:2]) or "software engineer"
+    location = req.location or ""
+
+    print(f"[DEBUG] /api/match fetching jobs for query: {query}")
+    jobs = agent2_jobs.fetch(query=query, location=location)
+    
+    print(f"[DEBUG] /api/match scoring {len(jobs)} jobs...")
+    scored = agent3_scoring.score_all(profile, jobs)
     
     # Standardize response shape exactly as requested
     profile_skills = {str(s).strip().lower() for s in profile.get("skills", []) if isinstance(s, str)}
@@ -182,10 +171,10 @@ async def dashboard_match(req: MatchRequest):
         job_skills = [s for s in job.get("skills", []) if isinstance(s, str)]
         
         standardized.append({
-            "job_id": str(job.get("id", "")),
-            "title": str(job.get("title", "")),
-            "company": str(job.get("company", "")),
-            "location": str(job.get("location", "")),
+            "job_id": str(job.get("job_id", job.get("id", ""))),
+            "title": str(job.get("title", "Untitled Role")),
+            "company": str(job.get("company", "Unknown Company")),
+            "location": str(job.get("location", "Unknown")),
             "match_score": int(score_obj.get("match_score", 0)),
             "reasoning": score_obj.get("reasoning", []),
             "skills_overlap": [s for s in job_skills if s.strip().lower() in profile_skills],
@@ -198,76 +187,6 @@ async def dashboard_match(req: MatchRequest):
         })
 
     return JSONResponse(content=standardized)
-
-
-# ---------------------------------------------------------------------------
-# Dashboard Match API
-# POST /api/match
-# ---------------------------------------------------------------------------
-
-@app.post("/api/match", tags=["dashboard"])
-async def dashboard_match(payload: dict):
-    """
-    Build dashboard-ready matched jobs in one call.
-
-    Body:
-      {
-        "profile": {...},
-        "query": "frontend engineer",   # optional
-        "location": "Remote"            # optional
-      }
-
-    Returns:
-      [
-        {
-          "job_id": "...",
-          "title": "...",
-          "company": "...",
-          "location": "...",
-          "match_score": 91,
-          "reasoning": [...],
-          "skills_overlap": [...]
-        }
-      ]
-    """
-    profile = payload.get("profile") or payload.get("profiles")
-    query = payload.get("query", "software engineer")
-    location = payload.get("location", "")
- 
-    jobs = agent2_jobs.fetch(query=query, location=location)
-    print(f"[DEBUG] /api/match profile skills: {profile.get('skills', [])[:5]}")
-    scored_jobs = agent3_scoring.score_all(profile, jobs)
-    print(f"[DEBUG] /api/match found {len(scored_jobs)} jobs from Agent 3 (AI Scored)")
-
-    matches = []
-    for job in scored_jobs:
-        score_obj = job.get("score", {})
-        matches.append({
-            "job_id": str(job.get("job_id", f"job-{idx + 1}")),
-            "title": str(job.get("title", "Untitled Role")),
-            "company": str(job.get("company", "Unknown Company")),
-            "location": str(job.get("location", "Unknown")),
-            "description": str(job.get("description", "")),
-            "url": str(job.get("url", "")),
-            "remote": bool(job.get("remote", False)),
-            "posted_at": str(job.get("posted_at", "")),
-            "salary_min": int(job.get("salary_min", 0) or 0),
-            "salary_max": int(job.get("salary_max", 0) or 0),
-            
-            # Standardized Schema Trace Keys (Guaranteed Lists)
-            "match_score": int(job.get("match_score", 0)),
-            "matched_skills": skills_list,
-            "reasoning": reasoning_list
-        })
-
-    print(f"[DEBUG] Sending {len(matches)} matches to frontend with standardized keys.")
-    return JSONResponse(content=matches)
-
-
-# ---------------------------------------------------------------------------
-# Agent 4 — Resume Tailoring
-# POST /tailor-resume
-# ---------------------------------------------------------------------------
 
 @app.post("/tailor-resume", tags=["agent-4"])
 async def tailor_resume(req: TailorRequest):
