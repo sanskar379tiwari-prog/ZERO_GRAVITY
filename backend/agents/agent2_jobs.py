@@ -1,80 +1,71 @@
-"""Agent 2 — Job Discovery
-Fetches jobs from JSearch API (RapidAPI). Falls back to mock_jobs.json.
+"""Agent 2 — Job Discovery (Google Jobs via SerpApi)
+Fetches jobs using the Google Jobs Search API.
+Falls back to mock_jobs.json if API key is missing or fails.
 """
 import json
 import os
-import requests
 from pathlib import Path
+from serpapi import GoogleSearch
 from dotenv import load_dotenv
 
 load_dotenv()
 
-JSEARCH_KEY = os.getenv("JSEARCH_API_KEY", "")
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 MOCK_PATH = Path(__file__).resolve().parents[2] / "mock_jobs.json"
 
 
 def fetch(query: str = "software engineer", location: str = "", page: int = 1) -> list:
-    """Fetch jobs — JSearch API with mock fallback."""
-    if JSEARCH_KEY:
+    """Fetch jobs — Google Jobs API with mock fallback."""
+    if SERPAPI_KEY:
         try:
-            return _jsearch(query, location, page)
+            return _google_jobs(query, location, page)
         except Exception as e:
-            print(f"[Agent 2] JSearch failed: {e}. Using mock jobs.")
+            print(f"[Agent 2] Google Jobs API failed: {e}. Using mock jobs.")
+    
+    print("[Agent 2] No SerpApi key found or API failed. Using mock data.")
     return _mock()
 
 
-def _jsearch(query: str, location: str, page: int) -> list:
-    url = "https://jsearch.p.rapidapi.com/search"
-    headers = {
-        "X-RapidAPI-Key": JSEARCH_KEY,
-        "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
-    }
+def _google_jobs(query: str, location: str, page: int) -> list:
+    """Search Google Jobs via SerpApi."""
+    search_query = f"{query} {location}".strip()
+    
+    # SerpApi parameters for Google Jobs
     params = {
-        "query": f"{query} {location}".strip(),
-        "page": str(page),
-        "num_results": "10",
-        "date_posted": "month",
+        "engine": "google_jobs",
+        "q": search_query,
+        "hl": "en",
+        "api_key": SERPAPI_KEY,
+        "start": (page - 1) * 10
     }
-    resp = requests.get(url, headers=headers, params=params, timeout=10)
-    resp.raise_for_status()
-    data = resp.json()
 
+    search = GoogleSearch(params)
+    results = search.get_dict()
+    
+    jobs_results = results.get("jobs_results", [])
+    
     jobs = []
-    for item in data.get("data", []):
-        city = item.get("job_city", "")
-        country = item.get("job_country", "")
-        location_str = ", ".join(filter(None, [city, country]))
+    for item in jobs_results:
+        # Normalize to our internal Job schema
         jobs.append({
             "id": item.get("job_id", ""),
-            "title": item.get("job_title", ""),
-            "company": item.get("employer_name", ""),
-            "location": location_str or "Not specified",
-            "remote": bool(item.get("job_is_remote", False)),
-            "salary_min": item.get("job_min_salary") or 0,
-            "salary_max": item.get("job_max_salary") or 0,
-            "description": (item.get("job_description") or "")[:1000],
-            "posted_at": (item.get("job_posted_at_datetime_utc") or "")[:10],
-            "url": item.get("job_apply_link", ""),
+            "title": item.get("title", ""),
+            "company": item.get("company_name", ""),
+            "location": item.get("location", "Remote"),
+            "remote": "remote" in (item.get("location", "").lower() + item.get("description", "").lower()),
+            "salary_min": 0, # SerpApi often doesn't give structured salary
+            "salary_max": 0,
+            "description": item.get("description", "")[:2000],
+            "posted_at": item.get("detected_extensions", {}).get("posted_at", "Recently"),
+            "url": item.get("related_links", [{}])[0].get("link", "") if item.get("related_links") else ""
         })
+        
     return jobs
 
 
 def _mock() -> list:
     """Load mock_jobs.json as demo fallback."""
     if MOCK_PATH.exists():
-        with open(MOCK_PATH, "r") as f:
+        with open(MOCK_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
-    return [
-        {
-            "id": "mock-001",
-            "title": "Junior Software Engineer",
-            "company": "Acme Corp",
-            "location": "Remote",
-            "remote": True,
-            "salary_min": 55000,
-            "salary_max": 75000,
-            "description": "Build scalable APIs using Python and FastAPI.",
-            "posted_at": "2026-05-01",
-            "url": "https://example.com/jobs/mock-001",
-        }
-    ]
+    return []

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-2.5-flash-lite-preview-06-17"
+MODEL = "gemini-1.5-flash"
 
 PROMPT = """You are an expert career coach and copywriter.
 Write a personalized cold-outreach email from a candidate to a recruiter/hiring manager.
