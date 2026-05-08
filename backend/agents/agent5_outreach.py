@@ -39,7 +39,7 @@ Rules:
 - Return ONLY raw JSON. No markdown. No explanation."""
 
 
-def generate(profile: dict, job: dict) -> dict:
+def draft(profile: dict, job: dict) -> dict:
     """Generate outreach content using Gemini."""
     prompt = PROMPT.format(
         profile=json.dumps(profile, indent=2),
