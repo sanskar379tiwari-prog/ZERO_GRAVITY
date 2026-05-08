@@ -175,6 +175,13 @@ async def dashboard_match(req: MatchRequest):
         
     return JSONResponse(content=final_matches)
 
+@app.get("/jobs", tags=["agent-2"])
+def list_jobs(query: str = "software engineer", location: str = "", remote: str = ""):
+    jobs = agent2_jobs.fetch(query=query, location=location)
+    if remote.lower() == "true":
+        jobs = [j for j in jobs if j.get("remote")]
+    return jobs
+
 @app.post("/tailor-resume", tags=["agent-4"])
 async def tailor_resume(req: TailorRequest):
     try:
