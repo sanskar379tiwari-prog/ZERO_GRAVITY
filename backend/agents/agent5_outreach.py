@@ -1,15 +1,16 @@
 """Agent 5 — Outreach Drafting
 Generates a personalized cold-outreach email + short cover letter
-for a given candidate profile and target job using Gemini 2.5 Flash Lite.
+for a given candidate profile and target job using Gemini.
 """
 import json
 import os
 from google import genai
 from dotenv import load_dotenv
+from usage import tracker
 
 load_dotenv()
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-2.5-flash-lite-preview-06-17"
+MODEL = "gemini-3.1-flash-lite"
 
 PROMPT = """You are an expert career coach and copywriter.
 Write a personalized cold-outreach email from a candidate to a recruiter/hiring manager.
@@ -38,8 +39,8 @@ Rules:
 - Return ONLY raw JSON. No markdown. No explanation."""
 
 
-def draft(profile: dict, job: dict) -> dict:
-    """Generate personalized outreach email for a job application."""
+def generate(profile: dict, job: dict) -> dict:
+    """Generate outreach content using Gemini."""
     prompt = PROMPT.format(
         profile=json.dumps(profile, indent=2),
         title=job.get("title", ""),
@@ -50,6 +51,7 @@ def draft(profile: dict, job: dict) -> dict:
     model = MODEL
     for attempt in range(3):
         try:
+            tracker.log_call("Gemini (3.1 Flash-Lite)")
             response = _client.models.generate_content(
                 model=model,
                 contents=prompt,

@@ -5,11 +5,12 @@ import json
 import os
 from google import genai
 from dotenv import load_dotenv
+from usage import tracker
 
 load_dotenv()
 
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-2.5-flash-lite-preview-06-17"
+MODEL = "gemini-3.1-flash-lite"
 
 PROFILE_SCHEMA = {
     "name": "",
@@ -73,6 +74,7 @@ def extract(
     model = MODEL
     for attempt in range(3):
         try:
+            tracker.log_call("Gemini (3.1 Flash-Lite)")
             response = _client.models.generate_content(
                 model=model,
                 contents=prompt,

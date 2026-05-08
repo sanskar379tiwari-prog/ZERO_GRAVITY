@@ -146,15 +146,32 @@ async def score_jobs(payload: dict):
     Body: { "profile": {...}, "jobs": [...] }
     Returns: List of jobs each with a "score" sub-object.
     """
-    profile = payload.get("profile")
+    print(f"[DEBUG] /score-jobs keys: {list(payload.keys())}")
+    profile = payload.get("profile") or payload.get("profiles")
     jobs = payload.get("jobs")
-
+ 
     if not profile or not isinstance(profile, dict):
+        print(f"[DEBUG] /score-jobs error: profile missing or invalid")
         raise HTTPException(status_code=400, detail="'profile' object is required.")
     if not jobs or not isinstance(jobs, list):
+        print(f"[DEBUG] /score-jobs error: jobs missing or invalid")
         raise HTTPException(status_code=400, detail="'jobs' list is required.")
 
     scored = agent3_scoring.score_all(profile, jobs)
+    
+    # Add dashboard-compatible fields (overlap, etc.)
+    profile_skills = {str(s).strip().lower() for s in profile.get("skills", []) if isinstance(s, str)}
+    for job in scored:
+        score_obj = job.get("score", {})
+        job_skills = [s for s in job.get("skills", []) if isinstance(s, str)]
+        
+        job["job_id"] = str(job.get("id", ""))
+        job["match_score"] = int(score_obj.get("match_score", 0))
+        job["reasoning"] = score_obj.get("reasoning", [])
+        job["skills_overlap"] = [s for s in job_skills if s.strip().lower() in profile_skills]
+        if not job["skills_overlap"]:
+            job["skills_overlap"] = job_skills[:3]
+
     return JSONResponse(content=scored)
 
 
@@ -188,14 +205,18 @@ async def dashboard_match(payload: dict):
         }
       ]
     """
-    profile = payload.get("profile")
+    profile = payload.get("profile") or payload.get("profiles")
     query = payload.get("query", "software engineer")
     location = payload.get("location", "")
+ 
+    print(f"[DEBUG] /api/match request: query='{query}', location='{location}'")
 
     if not profile or not isinstance(profile, dict):
+        print(f"[DEBUG] /api/match error: profile missing or invalid")
         raise HTTPException(status_code=400, detail="'profile' object is required.")
 
     jobs = agent2_jobs.fetch(query=query, location=location)
+    print(f"[DEBUG] /api/match found {len(jobs)} jobs from Agent 2")
     scored_jobs = agent3_scoring.score_all(profile, jobs)
 
     profile_skills = {
