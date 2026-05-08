@@ -1,0 +1,26 @@
+[
+  {
+    "id": "job-001",
+    "title": "Junior Backend Engineer",
+    "company": "Orbit Labs",
+    "location": "Remote",
+    "remote": true,
+    "salary_min": 55000,
+    "salary_max": 75000,
+    "description": "Build APIs for AI-powered workflows and support resume scraping services.",
+    "posted_at": "2026-05-01",
+    "url": "https://example.com/jobs/001"
+  },
+  {
+    "id": "job-002",
+    "title": "AI Product Analyst",
+    "company": "Zero Gravity",
+    "location": "San Francisco, CA",
+    "remote": false,
+    "salary_min": 65000,
+    "salary_max": 85000,
+    "description": "Analyze job signals and help automate candidate/job matching.",
+    "posted_at": "2026-05-04",
+    "url": "https://example.com/jobs/002"
+  }
+]
