@@ -3,7 +3,7 @@ Calls Gemini to rewrite resume sections optimised for a specific job,
 then generates a clean ATS-ready PDF with ReportLab.
 """
 import io, json, os, base64
-import google.generativeai as genai
+from google import genai
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
@@ -13,7 +13,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+MODEL = "gemini-2.5-flash-lite-preview-06-17"
 
 PROMPT = """You are an expert ATS resume optimizer. Rewrite the candidate's resume for this specific job.
 
@@ -66,18 +67,25 @@ def _call_gemini(profile: dict, job: dict, resume_text: str) -> dict:
         description=job.get("description", "")[:1500],
         resume_text=resume_text[:3000],
     )
-    try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw.strip())
-    except Exception as e:
-        print(f"[Agent 4] Gemini error: {e}. Using fallback.")
-        return _fallback(profile, job)
+    model = MODEL
+    for attempt in range(3):
+        try:
+            response = _client.models.generate_content(
+                model=model,
+                contents=prompt,
+            )
+            raw = response.text.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            return json.loads(raw.strip())
+        except json.JSONDecodeError as e:
+            print(f"[Agent 4] JSON parse error (attempt {attempt+1}): {e}")
+        except Exception as e:
+            print(f"[Agent 4] Gemini error: {e}. Using fallback.")
+            break
+    return _fallback(profile, job)
 
 
 def _fallback(profile: dict, job: dict) -> dict:

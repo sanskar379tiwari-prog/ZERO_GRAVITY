@@ -1,14 +1,15 @@
 """Agent 1 — Profile Extraction
-Extracts structured candidate profile from resume text using Gemini 2.5 Flash.
+Extracts structured candidate profile from resume text using Gemini 2.5 Flash Lite.
 """
 import json
 import os
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+MODEL = "gemini-2.5-flash-lite-preview-06-17"
 
 PROFILE_SCHEMA = {
     "name": "",
@@ -69,24 +70,31 @@ def extract(
         schema=json.dumps(PROFILE_SCHEMA, indent=2),
     )
 
-    try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
-        # Strip markdown fences if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        profile = json.loads(raw.strip())
-        # Ensure all schema keys exist
-        for key, default in PROFILE_SCHEMA.items():
-            if key not in profile:
-                profile[key] = default
-        return profile
-    except Exception as e:
-        print(f"[Agent 1] Gemini error: {e}. Using fallback parser.")
-        return _fallback(resume_text)
+    model = MODEL
+    for attempt in range(3):
+        try:
+            response = _client.models.generate_content(
+                model=model,
+                contents=prompt,
+            )
+            raw = response.text.strip()
+            # Strip markdown fences if present
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            profile = json.loads(raw.strip())
+            # Ensure all schema keys exist
+            for key, default in PROFILE_SCHEMA.items():
+                if key not in profile:
+                    profile[key] = default
+            return profile
+        except json.JSONDecodeError as e:
+            print(f"[Agent 1] JSON parse error (attempt {attempt+1}): {e}")
+        except Exception as e:
+            print(f"[Agent 1] Gemini error: {e}. Using fallback parser.")
+            break
+    return _fallback(resume_text)
 
 
 def _fallback(resume_text: str) -> dict:

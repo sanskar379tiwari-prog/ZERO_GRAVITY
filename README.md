@@ -1,36 +1,43 @@
 # Zero Gravity — AI Job Application Orchestration
 
-A fast-start repository scaffold for the AI Job Application Orchestration System.
+A multi-agent AI workflow platform that automates the job application process from resume extraction to interview tracking.
 
-## Purpose
+## Features
 
-This repo is a minimal starting point for:
-- resume upload and profile extraction
-- job discovery and ranking
-- tailored resume generation
-- outreach email drafting
-- application tracking
+- **Agent 1 — Profile Extraction**: Extracts structured JSON from resume PDFs using Gemini.
+- **Agent 2 — Job Discovery**: Fetches real-time jobs via JSearch API (with mock fallback).
+- **Agent 3 — Match Scoring**: Intelligent weighted scoring (Skills, ATS, Location, Salary).
+- **Agent 4 — Resume Tailoring**: Rewrites resume sections and generates tailored PDFs.
+- **Agent 5 — Outreach Drafting**: Generates personalized cold emails/cover letters.
+- **Agent 6 — Tracking**: Manages application states and detects interview conflicts.
 
-## Contents
+## Project Structure
 
-- `backend/` — FastAPI backend and AI orchestrator stubs
-- `frontend/` — placeholder React/Next.js app structure
-- `schemas.py` — shared JSON schema models
-- `mock_jobs.json` — fallback jobs for demo mode
+- `backend/` — FastAPI application and AI agents.
+- `frontend/` — Next.js 14 dashboard (Tailwind CSS, shadcn/ui).
+- `mock_jobs.json` — Demo data for local testing.
 
 ## Getting Started
 
-### Backend
+### Backend Setup
 
-```bash
-cd backend
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app:app --reload
-```
+1. **Environment**:
+   ```bash
+   cd backend
+   py -3.12 -m venv .venv
+   .\.venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 
-### Frontend
+2. **Configuration**:
+   Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`.
+
+3. **Run**:
+   ```bash
+   uvicorn app:app --reload --port 8000
+   ```
+
+### Frontend Setup
 
 ```bash
 cd frontend
@@ -38,13 +45,12 @@ npm install
 npm run dev
 ```
 
-## Project Goals
+## API Highlights
 
-1. Upload resume
-2. Extract candidate profile
-3. Fetch jobs
-4. Display matches
+- `POST /orchestrate/pipeline` — Single call to run Agent 1, 2, and 3 (Phase 1 milestone).
+- `POST /extract-profile` — Resume to JSON conversion.
+- `POST /tailor-resume` — Job-specific PDF generation.
 
-## Notes
+## License
 
-This repo is intentionally lightweight and can be extended to add the full workflow.
+Community Track Hackathon Project.
