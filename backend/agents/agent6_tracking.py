@@ -1,83 +1,24 @@
-"""Agent 6 — Application Tracking (REST Optimized)
-Uses direct Supabase REST API calls for maximum compatibility.
-No complex C++ dependencies required.
+"""Agent 6 — Application Tracking & Interview Scheduling
+Manages application state and basic interview slot conflict detection.
+Uses an in-memory store for demo reliability (no Supabase required to run).
+Swap _store with real Supabase calls once credentials are available.
 """
-import os
-import uuid
-import requests
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from dotenv import load_dotenv
-
-load_dotenv()
+from typing import Optional
+import uuid
 
 # ---------------------------------------------------------------------------
-# Initialization
+# In-memory store — replaced by Supabase in production
 # ---------------------------------------------------------------------------
-URL: str = os.getenv("SUPABASE_URL", "")
-KEY: str = os.getenv("SUPABASE_KEY", "")
+_applications: dict[str, dict] = {}
+_interviews: dict[str, dict] = {}
 
-# ---------------------------------------------------------------------------
-# Supabase REST Helpers
-# ---------------------------------------------------------------------------
-
-def _sb_post(table: str, data: dict) -> Optional[dict]:
-    if not URL or not KEY: return None
-    headers = {
-        "apikey": KEY,
-        "Authorization": f"Bearer {KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation"
-    }
-    try:
-        response = requests.post(f"{URL}/rest/v1/{table}", headers=headers, json=data, timeout=10)
-        if response.status_code in (200, 201):
-            return response.json()[0] if response.json() else None
-        print(f"⚠️ Supabase POST {table} failed: {response.status_code} {response.text}")
-    except Exception as e:
-        print(f"⚠️ Supabase request error: {e}")
-    return None
-
-def _sb_get(table: str, query: str = "*", order: str = "created_at.desc") -> List[dict]:
-    if not URL or not KEY: return []
-    headers = {
-        "apikey": KEY,
-        "Authorization": f"Bearer {KEY}"
-    }
-    try:
-        url = f"{URL}/rest/v1/{table}?select={query}&order={order}"
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        print(f"⚠️ Supabase GET {table} failed: {response.status_code} {response.text}")
-    except Exception as e:
-        print(f"⚠️ Supabase request error: {e}")
-    return []
-
-def _sb_patch(table: str, app_id: str, data: dict) -> Optional[dict]:
-    if not URL or not KEY: return None
-    headers = {
-        "apikey": KEY,
-        "Authorization": f"Bearer {KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation"
-    }
-    try:
-        # We assume 'id' is the primary key in Supabase
-        response = requests.patch(f"{URL}/rest/v1/{table}?id=eq.{app_id}", headers=headers, json=data, timeout=10)
-        if response.status_code in (200, 204):
-            return response.json()[0] if response.json() else {"id": app_id, **data}
-        print(f"⚠️ Supabase PATCH {table} failed: {response.status_code} {response.text}")
-    except Exception as e:
-        print(f"⚠️ Supabase request error: {e}")
-    return None
-
-# ---------------------------------------------------------------------------
-# Application Tracking
-# ---------------------------------------------------------------------------
-
-_memory_apps: Dict[str, Dict[str, Any]] = {}
 VALID_STATUSES = {"Applied", "Pending", "Interview", "Rejected", "Offer"}
+
+
+# ---------------------------------------------------------------------------
+# Application helpers
+# ---------------------------------------------------------------------------
 
 def create_application(
     job_id: str,
@@ -85,59 +26,129 @@ def create_application(
     company: str,
     profile_name: str,
     status: str = "Applied",
-) -> Dict[str, Any]:
-    validated_status = status if status in VALID_STATUSES else "Applied"
-    
-    payload = {
+) -> dict:
+    """Create and store a new application record."""
+    app_id = f"app-{uuid.uuid4().hex[:8]}"
+    record = {
+        "app_id": app_id,
         "job_id": job_id,
         "job_title": job_title,
         "company": company,
         "profile_name": profile_name,
-        "status": validated_status,
-        "updated_at": datetime.utcnow().isoformat()
+        "status": status if status in VALID_STATUSES else "Applied",
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+        "interview_id": None,
+        "notes": "",
     }
+    _applications[app_id] = record
+    return record
 
-    # Try Supabase first
-    record = _sb_post("applications", payload)
-    if record:
-        record["app_id"] = str(record.get("id"))
-        return record
 
-    # Fallback to Memory
-    app_id = f"app-{uuid.uuid4().hex[:8]}"
-    mem_record = {
-        **payload,
+def get_applications() -> list:
+    """Return all tracked applications sorted by most recent."""
+    return sorted(
+        _applications.values(),
+        key=lambda a: a["created_at"],
+        reverse=True,
+    )
+
+
+def update_status(app_id: str, status: str) -> Optional[dict]:
+    """Update the status of an existing application."""
+    if app_id not in _applications:
+        return None
+    if status not in VALID_STATUSES:
+        return None
+    _applications[app_id]["status"] = status
+    _applications[app_id]["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    return _applications[app_id]
+
+
+# ---------------------------------------------------------------------------
+# Interview scheduling helpers
+# ---------------------------------------------------------------------------
+
+def schedule_interview(
+    app_id: str,
+    datetime_iso: str,
+    duration_minutes: int = 60,
+    platform: str = "Google Meet",
+    notes: str = "",
+) -> dict:
+    """
+    Schedule an interview for an application.
+    Detects time conflicts with existing interviews.
+    Returns the interview record (or a conflict error dict).
+    """
+    conflict = _detect_conflict(datetime_iso, duration_minutes, exclude_id=None)
+    if conflict:
+        return {
+            "error": "time_conflict",
+            "message": f"Conflict with interview '{conflict['company']}' at {conflict['scheduled_at']}",
+            "conflicting_interview": conflict,
+        }
+
+    interview_id = f"iv-{uuid.uuid4().hex[:8]}"
+    record = {
+        "id": interview_id,
         "app_id": app_id,
-        "created_at": datetime.utcnow().isoformat(),
-        "notes": ""
+        "company": _applications.get(app_id, {}).get("company", "Unknown"),
+        "scheduled_at": datetime_iso,
+        "duration_minutes": duration_minutes,
+        "platform": platform,
+        "notes": notes,
+        "status": "Scheduled",
+        "created_at": datetime.utcnow().isoformat() + "Z",
     }
-    _memory_apps[app_id] = mem_record
-    return mem_record
+    _interviews[interview_id] = record
 
-def get_applications() -> List[Dict[str, Any]]:
-    # Try Supabase
-    records = _sb_get("applications")
-    if records:
-        for r in records: r["app_id"] = str(r.get("id"))
-        return records
+    # Link interview to application and bump status
+    if app_id in _applications:
+        _applications[app_id]["interview_id"] = interview_id
+        _applications[app_id]["status"] = "Interview"
+        _applications[app_id]["updated_at"] = datetime.utcnow().isoformat() + "Z"
 
-    # Fallback to Memory
-    return sorted(_memory_apps.values(), key=lambda a: a.get("created_at", ""), reverse=True)
+    return record
 
-def update_status(app_id: str, status: str) -> Optional[Dict[str, Any]]:
-    if status not in VALID_STATUSES: return None
-    
-    payload = {"status": status, "updated_at": datetime.utcnow().isoformat()}
-    
-    # Try Supabase
-    # Note: app_id is the 'id' uuid in Supabase
-    record = _sb_patch("applications", app_id, payload)
-    if record:
-        record["app_id"] = str(record.get("id"))
-        return record
 
-    # Fallback to Memory
-    if app_id in _memory_apps:
-        _memory_apps[app_id].update(payload)
-        return _memory_apps[app_id]
+def get_interviews() -> list:
+    """Return all scheduled interviews sorted chronologically."""
+    return sorted(
+        _interviews.values(),
+        key=lambda i: i["scheduled_at"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _detect_conflict(
+    new_start_iso: str,
+    duration: int,
+    exclude_id: Optional[str],
+) -> Optional[dict]:
+    """Return the first conflicting interview record, or None."""
+    try:
+        new_start = datetime.fromisoformat(new_start_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None  # unparseable datetime — skip conflict check
+
+    from datetime import timedelta
+    new_end = new_start + timedelta(minutes=duration)
+
+    for iv in _interviews.values():
+        if iv["id"] == exclude_id:
+            continue
+        try:
+            iv_start = datetime.fromisoformat(iv["scheduled_at"].replace("Z", "+00:00"))
+            iv_end = iv_start + timedelta(minutes=iv.get("duration_minutes", 60))
+        except ValueError:
+            continue
+
+        # Overlap: new starts before existing ends AND new ends after existing starts
+        if new_start < iv_end and new_end > iv_start:
+            return iv
+
     return None
