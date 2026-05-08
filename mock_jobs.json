@@ -7,20 +7,68 @@
     "remote": true,
     "salary_min": 55000,
     "salary_max": 75000,
-    "description": "Build APIs for AI-powered workflows and support resume scraping services.",
-    "posted_at": "2026-05-01",
+    "description": "Build and maintain REST APIs using Python, FastAPI, and PostgreSQL. Work with an AI-first team on automated workflows. Experience with Docker, Git, and cloud deployment preferred. Strong problem-solving skills and ability to write clean, tested code.",
+    "posted_at": "2026-05-06",
     "url": "https://example.com/jobs/001"
   },
   {
     "id": "job-002",
     "title": "AI Product Analyst",
-    "company": "Zero Gravity",
+    "company": "Zero Gravity Inc.",
     "location": "San Francisco, CA",
     "remote": false,
     "salary_min": 65000,
-    "salary_max": 85000,
-    "description": "Analyze job signals and help automate candidate/job matching.",
+    "salary_max": 90000,
+    "description": "Analyze job signals, model candidate-job matching logic, and help automate recruiter workflows. You'll work with Python, SQL, and machine learning pipelines. Strong data analysis and communication skills required. Experience with LLMs or NLP is a big plus.",
     "posted_at": "2026-05-04",
     "url": "https://example.com/jobs/002"
+  },
+  {
+    "id": "job-003",
+    "title": "Full Stack Developer",
+    "company": "Nova Systems",
+    "location": "Remote",
+    "remote": true,
+    "salary_min": 60000,
+    "salary_max": 85000,
+    "description": "Build end-to-end features across React/Next.js frontend and Node.js/FastAPI backend. Collaborate with designers to ship pixel-perfect UIs. Comfortable with REST APIs, PostgreSQL, and cloud services like AWS or GCP. 1-2 years of experience preferred.",
+    "posted_at": "2026-05-05",
+    "url": "https://example.com/jobs/003"
+  },
+  {
+    "id": "job-004",
+    "title": "Machine Learning Engineer",
+    "company": "DeepLayer AI",
+    "location": "Bengaluru, India",
+    "remote": true,
+    "salary_min": 70000,
+    "salary_max": 100000,
+    "description": "Design and deploy ML models for NLP and recommendation systems. Hands-on with PyTorch, Hugging Face transformers, and vector databases. Experience with MLOps pipelines (MLflow, Kubeflow) and Python is required. 2+ years of experience in applied ML.",
+    "posted_at": "2026-05-03",
+    "url": "https://example.com/jobs/004"
+  },
+  {
+    "id": "job-005",
+    "title": "Frontend Engineer (React)",
+    "company": "Pulse Digital",
+    "location": "Remote",
+    "remote": true,
+    "salary_min": 52000,
+    "salary_max": 72000,
+    "description": "Create beautiful, accessible UI components using React, TypeScript, and TailwindCSS. Work closely with the product team to implement design systems and smooth animations. Experience with Next.js, REST APIs, and performance optimization is a strong plus.",
+    "posted_at": "2026-05-07",
+    "url": "https://example.com/jobs/005"
+  },
+  {
+    "id": "job-006",
+    "title": "Data Engineer",
+    "company": "Quantum Data Co.",
+    "location": "New York, NY",
+    "remote": false,
+    "salary_min": 75000,
+    "salary_max": 105000,
+    "description": "Design and build scalable data pipelines using Apache Spark, dbt, and Airflow. Work with large-scale PostgreSQL and S3 data lakes. Strong SQL and Python skills required. 2+ years of experience in a data engineering or analytics engineering role.",
+    "posted_at": "2026-04-28",
+    "url": "https://example.com/jobs/006"
   }
 ]
