@@ -45,16 +45,13 @@ Return ONLY raw JSON. No markdown. No explanation."""
 
 def extract(
     resume_text: str,
-    linkedin_about: str = "",
     github_url: str = "",
     role_preference: str = "",
     location_preference: str = "",
     remote_preference: str = "",
 ) -> dict:
-    """Extract structured profile from resume text using Gemini 2.5 Flash."""
+    """Extract structured profile from resume text using Gemini."""
     ctx_parts = []
-    if linkedin_about:
-        ctx_parts.append(f"LinkedIn About: {linkedin_about}")
     if github_url:
         ctx_parts.append(f"GitHub: {github_url}")
     if role_preference:
