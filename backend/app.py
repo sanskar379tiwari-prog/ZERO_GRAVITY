@@ -77,7 +77,6 @@ async def collect_link_data(payload: dict):
 @app.post("/extract-profile", tags=["agent-1"])
 async def extract_profile(
     resume_pdf: UploadFile = File(...),
-    linkedin_about: str = Form(default=""),
     github_url: str = Form(default=""),
     role_preference: str = Form(default=""),
     location_preference: str = Form(default=""),
@@ -97,7 +96,6 @@ async def extract_profile(
     resume_text = extract_text(pdf_bytes)
     profile = agent1_profile.extract(
         resume_text=resume_text,
-        linkedin_about=linkedin_about,
         github_url=github_url,
         role_preference=role_preference,
         location_preference=location_preference,
