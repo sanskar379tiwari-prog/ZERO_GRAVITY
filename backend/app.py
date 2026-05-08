@@ -137,6 +137,84 @@ async def score_jobs(payload: dict):
 
 
 # ---------------------------------------------------------------------------
+# Dashboard Match API
+# POST /api/match
+# ---------------------------------------------------------------------------
+
+@app.post("/api/match", tags=["dashboard"])
+async def dashboard_match(payload: dict):
+    """
+    Build dashboard-ready matched jobs in one call.
+
+    Body:
+      {
+        "profile": {...},
+        "query": "frontend engineer",   # optional
+        "location": "Remote"            # optional
+      }
+
+    Returns:
+      [
+        {
+          "job_id": "...",
+          "title": "...",
+          "company": "...",
+          "location": "...",
+          "match_score": 91,
+          "reasoning": [...],
+          "skills_overlap": [...]
+        }
+      ]
+    """
+    profile = payload.get("profile")
+    query = payload.get("query", "software engineer")
+    location = payload.get("location", "")
+
+    if not profile or not isinstance(profile, dict):
+        raise HTTPException(status_code=400, detail="'profile' object is required.")
+
+    jobs = agent2_jobs.fetch(query=query, location=location)
+    scored_jobs = agent3_scoring.score_all(profile, jobs)
+
+    profile_skills = {
+        str(s).strip().lower()
+        for s in profile.get("skills", [])
+        if isinstance(s, str)
+    }
+
+    matches = []
+    for job in scored_jobs:
+        score = job.get("score", {}) if isinstance(job.get("score"), dict) else {}
+        job_skills = [
+            s for s in job.get("skills", []) if isinstance(s, str)
+        ]
+
+        overlap = [
+            skill for skill in job_skills
+            if skill.strip().lower() in profile_skills
+        ]
+        if not overlap:
+            overlap = job_skills[:3]
+
+        reasoning = score.get("reasoning", [])
+        if not isinstance(reasoning, list):
+            reasoning = []
+        reasoning = [r for r in reasoning if isinstance(r, str)]
+
+        matches.append({
+            "job_id": str(job.get("id", "")),
+            "title": str(job.get("title", "Untitled Role")),
+            "company": str(job.get("company", "Unknown Company")),
+            "location": str(job.get("location", "Unknown")),
+            "match_score": int(score.get("match_score", 0)),
+            "reasoning": reasoning,
+            "skills_overlap": overlap,
+        })
+
+    return JSONResponse(content=matches)
+
+
+# ---------------------------------------------------------------------------
 # Agent 4 — Resume Tailoring
 # POST /tailor-resume
 # ---------------------------------------------------------------------------
