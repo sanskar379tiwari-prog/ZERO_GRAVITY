@@ -101,9 +101,7 @@ export async function updateApplicationStatus(
 }
 
 function normalizeApplication(raw: Record<string, unknown>): ApplicationRecord {
-  const backendStatus = String(raw.status ?? "Pending");
-  const status: ApplicationStatus =
-    backendStatus === "Offer" ? "Pending" : (backendStatus as ApplicationStatus);
+  const status = (raw.status as ApplicationStatus) || "Applied";
 
   return {
     app_id: String(raw.id ?? raw.app_id ?? ""),

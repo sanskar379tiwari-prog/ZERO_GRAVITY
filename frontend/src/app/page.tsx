@@ -205,14 +205,14 @@ export default function OnboardingPage() {
       if (!jobsRes.ok) throw new Error("Job discovery failed");
       const jobs = await jobsRes.json();
 
-      // Step 4: Score jobs
+      // Step 4: Score jobs (Using standardized /api/match)
       setCurrentStep(4);
-      const scoreRes = await fetch(`${API}/score-jobs`, {
+      const scoreRes = await fetch(`${API}/api/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, jobs }),
+        body: JSON.stringify({ profile, query, location: profile.location || location || "" }),
       });
-      const scoredJobs = scoreRes.ok ? await scoreRes.json() : jobs.map((j: object) => ({ ...j, score: null }));
+      const scoredJobs = scoreRes.ok ? await scoreRes.json() : jobs.map((j: any) => ({ ...j, match_score: 0 }));
 
       // Keep matched jobs store in sync for compare page routing
       const matchRes = await fetch(`${API}/api/match`, {
