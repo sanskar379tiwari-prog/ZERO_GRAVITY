@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 # FORCE OVERRIDE to handle cases where old keys are stuck in the terminal environment
 load_dotenv(override=True)
 
-from typing import List, Optional
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Body
+import os
+import json
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -173,29 +174,100 @@ async def dashboard_match(req: MatchRequest):
     profile = req.profile
     query = req.query or " ".join(profile.get("roles", [])[:1] + profile.get("skills", [])[:2]) or "software engineer"
     
-    jobs = agent2_jobs.fetch(query=query, location=req.location)
+    # Standardize response shape exactly as requested
+    profile_skills = {str(s).strip().lower() for s in profile.get("skills", []) if isinstance(s, str)}
+    standardized = []
+    for job in scored:
+        score_obj = job.get("score", {})
+        job_skills = [s for s in job.get("skills", []) if isinstance(s, str)]
+        
+        standardized.append({
+            "job_id": str(job.get("id", "")),
+            "title": str(job.get("title", "")),
+            "company": str(job.get("company", "")),
+            "location": str(job.get("location", "")),
+            "match_score": int(score_obj.get("match_score", 0)),
+            "reasoning": score_obj.get("reasoning", []),
+            "skills_overlap": [s for s in job_skills if s.strip().lower() in profile_skills],
+            "description": str(job.get("description", "")),
+            "url": str(job.get("url", "")),
+            "remote": bool(job.get("remote", False)),
+            "posted_at": str(job.get("posted_at", "")),
+            "salary_min": int(job.get("salary_min", 0) or 0),
+            "salary_max": int(job.get("salary_max", 0) or 0),
+        })
+
+    return JSONResponse(content=standardized)
+
+
+# ---------------------------------------------------------------------------
+# Dashboard Match API
+# POST /api/match
+# ---------------------------------------------------------------------------
+
+@app.post("/api/match", tags=["dashboard"])
+async def dashboard_match(payload: dict):
+    """
+    Build dashboard-ready matched jobs in one call.
+
+    Body:
+      {
+        "profile": {...},
+        "query": "frontend engineer",   # optional
+        "location": "Remote"            # optional
+      }
+
+    Returns:
+      [
+        {
+          "job_id": "...",
+          "title": "...",
+          "company": "...",
+          "location": "...",
+          "match_score": 91,
+          "reasoning": [...],
+          "skills_overlap": [...]
+        }
+      ]
+    """
+    profile = payload.get("profile") or payload.get("profiles")
+    query = payload.get("query", "software engineer")
+    location = payload.get("location", "")
+ 
+    jobs = agent2_jobs.fetch(query=query, location=location)
+    print(f"[DEBUG] /api/match profile skills: {profile.get('skills', [])[:5]}")
     scored_jobs = agent3_scoring.score_all(profile, jobs)
-    
-    # Standardize response keys for the frontend
+    print(f"[DEBUG] /api/match found {len(scored_jobs)} jobs from Agent 3 (AI Scored)")
+
     matches = []
     for job in scored_jobs:
         score_obj = job.get("score", {})
         matches.append({
-            "job_id": str(job.get("id", "")),
-            "title": job.get("title", ""),
-            "company": job.get("company", ""),
-            "location": job.get("location", ""),
-            "match_score": score_obj.get("match_score", 0),
-            "reasoning": score_obj.get("reasoning", []),
-            "skills_overlap": [s for s in job.get("skills", []) if s.lower() in [ps.lower() for ps in profile.get("skills", [])]],
-            "description": job.get("description", ""),
-            "url": job.get("url", ""),
-            "remote": job.get("remote", False),
-            "posted_at": job.get("posted_at", ""),
-            "salary_min": job.get("salary_min", 0),
-            "salary_max": job.get("salary_max", 0),
+            "job_id": str(job.get("job_id", f"job-{idx + 1}")),
+            "title": str(job.get("title", "Untitled Role")),
+            "company": str(job.get("company", "Unknown Company")),
+            "location": str(job.get("location", "Unknown")),
+            "description": str(job.get("description", "")),
+            "url": str(job.get("url", "")),
+            "remote": bool(job.get("remote", False)),
+            "posted_at": str(job.get("posted_at", "")),
+            "salary_min": int(job.get("salary_min", 0) or 0),
+            "salary_max": int(job.get("salary_max", 0) or 0),
+            
+            # Standardized Schema Trace Keys (Guaranteed Lists)
+            "match_score": int(job.get("match_score", 0)),
+            "matched_skills": skills_list,
+            "reasoning": reasoning_list
         })
-    return matches
+
+    print(f"[DEBUG] Sending {len(matches)} matches to frontend with standardized keys.")
+    return JSONResponse(content=matches)
+
+
+# ---------------------------------------------------------------------------
+# Agent 4 — Resume Tailoring
+# POST /tailor-resume
+# ---------------------------------------------------------------------------
 
 @app.post("/tailor-resume", tags=["agent-4"])
 async def tailor_resume(req: TailorRequest):

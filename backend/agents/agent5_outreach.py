@@ -41,7 +41,7 @@ Rules:
 - Return ONLY raw JSON. No markdown. No explanation."""
 
 
-def generate(profile: dict, job: dict) -> dict:
+def draft(profile: dict, job: dict) -> dict:
     """Generate outreach content using Gemini."""
     prompt = PROMPT.format(
         profile=json.dumps(profile, indent=2),
@@ -50,32 +50,36 @@ def generate(profile: dict, job: dict) -> dict:
         description=job.get("description", "")[:1200],
     )
 
-    try:
-        client = get_client()
-        tracker.log_call(f"Gemini ({MODEL})")
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=prompt,
-        )
-        raw = response.text.strip()
-        
-        # Extract JSON from markdown fences if present
-        if "```" in raw:
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        
-        result = json.loads(raw.strip())
-        
-        # Ensure all keys present
-        for key in ("subject", "email_body", "short_cover"):
-            if key not in result:
-                result[key] = ""
-        return result
-    except Exception as e:
-        print(f"[Agent 5] Error: {e}. Using fallback.")
+    model = MODEL
+    for attempt in range(3):
+        try:
+            tracker.log_call("Gemini (3.1 Flash-Lite)")
+            response = _client.models.generate_content(
+                model=model,
+                contents=prompt,
+            )
+            raw = response.text.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            result = json.loads(raw.strip())
+            # Ensure all keys present
+            for key in ("subject", "email_body", "short_cover"):
+                if key not in result:
+                    result[key] = ""
+            return result
+        except Exception as e:
+            if attempt < 2:
+                import time
+                wait_time = (attempt + 1) * 2
+                print(f"[Agent 5] Gemini Busy. Retrying in {wait_time}s... ({attempt+1}/3)")
+                time.sleep(wait_time)
+            else:
+                print(f"[Agent 5] Outreach failed: {e}")
+                raise e
 
-    return _fallback(profile, job)
+    return {} # Should not be reached due to raise
 
 
 def _fallback(profile: dict, job: dict) -> dict:
