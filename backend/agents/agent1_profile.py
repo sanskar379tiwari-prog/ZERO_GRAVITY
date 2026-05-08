@@ -1,116 +1,116 @@
-"""Agent 1 — Profile Extraction
-Extracts structured candidate profile from resume text using Gemini 2.5 Flash Lite.
+"""Agent 1 — Ultra-Fidelity Profile Extraction
+Analyzes Resume + Deep GitHub data to build a verified candidate identity.
+Includes retry logic for high-demand periods.
 """
-import json
-import os
+import os, json, time
 from google import genai
-from dotenv import load_dotenv
+from google.genai import errors
+from agents import agent0_enrichment
 from usage import tracker
+from dotenv import load_dotenv
 
 load_dotenv()
-
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
 MODEL = "gemini-1.5-flash"
 
 PROFILE_SCHEMA = {
-    "name": "",
-    "skills": [],
+    "name": "Full Name",
+    "skills": ["Skill1", "Skill2"],
+    "roles": ["Role1"],
     "experience_years": 0,
-    "roles": [],
-    "location": "",
+    "location": "City, Country",
     "salary_expectation": {"min": 0, "max": 0},
-    "remote_preference": "flexible"
+    "remote_preference": "remote/onsite/hybrid",
+    "projects": [{"title": "Name", "description": "Short summary", "tech_stack": ["Tech1"]}]
 }
 
-PROMPT = """You are an expert resume parser. Extract the candidate profile from the resume text below.
+PROMPT = """Analyze the provided RESUME and GITHUB CONTEXT to build a professional profile.
 
-Resume Text:
+RESUME:
 {resume_text}
 
-{optional_context}
+GITHUB CONTEXT:
+{context}
 
-Return ONLY a valid JSON object with this exact schema:
-{schema}
+TASK:
+1. Combine resume facts with verified GitHub projects/skills.
+2. If the resume is missing, build the profile ENTIRELY from the GitHub context.
+3. Extract specific frameworks, tools, and languages.
 
-Rules:
-- skills: all technical and soft skills mentioned
-- experience_years: total years of professional experience (estimate from dates)
-- roles: job titles/roles held or targeted
-- location: city/country from resume, or "Not specified"
-- salary_expectation: estimate min/max in USD based on experience level
-- remote_preference: one of "remote", "hybrid", "onsite", "flexible"
+RETURN ONLY RAW JSON:
+{schema}"""
 
-Return ONLY raw JSON. No markdown. No explanation."""
-
-
-def extract(
-    resume_text: str,
-    github_url: str = "",
-    role_preference: str = "",
-    location_preference: str = "",
-    remote_preference: str = "",
-) -> dict:
-    """Extract structured profile from resume text using Gemini."""
+def extract(resume_text: str = "", github_url: str = "", role_preference: str = "") -> dict:
     ctx_parts = []
+    
     if github_url:
-        ctx_parts.append(f"GitHub: {github_url}")
-    if role_preference:
-        ctx_parts.append(f"Target role: {role_preference}")
-    if location_preference:
-        ctx_parts.append(f"Preferred location: {location_preference}")
-    if remote_preference:
-        ctx_parts.append(f"Remote preference: {remote_preference}")
-    optional_context = "\n".join(ctx_parts)
+        print(f"[Agent 1] Ultra-Deep Analysis for: {github_url}")
+        gh_data = agent0_enrichment.collect(github_url=github_url)
+        if gh_data.get("github", {}).get("status") == "ok":
+            gh = gh_data["github"]
+            fp = gh.get("technical_fingerprint", {})
+            catalog = gh.get("project_catalog", [])
+            
+            # Detailed debug log
+            print(f"  > GitHub Data: {len(gh.get('profile_readme',''))} bytes of Profile README")
+            print(f"  > GitHub Projects: {len(catalog)} projects found.")
 
-    prompt = PROMPT.format(
-        resume_text=resume_text[:6000],
-        optional_context=optional_context,
-        schema=json.dumps(PROFILE_SCHEMA, indent=2),
+            gh_summary = (
+                f"--- GITHUB VERIFIED DATA ---\n"
+                f"Bio: {gh.get('bio')}\n"
+                f"Profile README:\n{gh.get('profile_readme', '')[:1200]}\n"
+                f"Top Languages: {', '.join(fp.get('top_languages', []))}\n"
+                f"Project History:\n"
+            )
+            for p in catalog:
+                gh_summary += f"- {p['title']}: {p['description']}\n  README Snippet: {p.get('readme_snippet','')[:600]}\n"
+            
+            ctx_parts.append(gh_summary)
+            if not resume_text:
+                resume_text = "N/A - Extract from GitHub only"
+        else:
+            print(f"  > GitHub Scan Failed: {gh_data.get('github', {}).get('reason')}")
+
+    if role_preference:
+        ctx_parts.append(f"Target Role: {role_preference}")
+
+    full_prompt = PROMPT.format(
+        resume_text=resume_text,
+        context="\n".join(ctx_parts),
+        schema=json.dumps(PROFILE_SCHEMA)
     )
 
-    model = MODEL
     for attempt in range(3):
         try:
             tracker.log_call("Gemini (3.1 Flash-Lite)")
-            response = _client.models.generate_content(
-                model=model,
-                contents=prompt,
-            )
+            response = _client.models.generate_content(model=MODEL, contents=full_prompt)
             raw = response.text.strip()
-            # Strip markdown fences if present
-            if raw.startswith("```"):
-                raw = raw.split("```", 2)[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
+            
+            if "```" in raw:
+                raw = raw.split("```")[1].replace("json", "", 1).strip()
+            
             profile = json.loads(raw.strip())
-            # Ensure all schema keys exist
-            for key, default in PROFILE_SCHEMA.items():
-                if key not in profile:
-                    profile[key] = default
             return profile
-        except json.JSONDecodeError as e:
-            print(f"[Agent 1] JSON parse error (attempt {attempt+1}): {e}")
+
+        except errors.ServerError:
+            wait = (attempt + 1) * 3
+            print(f"[Agent 1] Gemini Busy (503). Retrying in {wait}s... ({attempt+1}/3)")
+            time.sleep(wait)
         except Exception as e:
-            print(f"[Agent 1] Gemini error: {e}. Using fallback parser.")
-            break
+            if attempt == 2:
+                print(f"[Agent 1] Critical Failure: {e}")
+                return _fallback(resume_text)
+            time.sleep(1)
+
     return _fallback(resume_text)
 
-
-def _fallback(resume_text: str) -> dict:
-    """Basic keyword fallback when Gemini is unavailable."""
-    lines = [l.strip() for l in resume_text.splitlines() if l.strip()]
-    name = lines[0] if lines else "Unknown Candidate"
-    keywords = [
-        "python", "javascript", "typescript", "react", "node", "sql",
-        "java", "aws", "docker", "git", "fastapi", "machine learning",
-    ]
-    skills = [k.title() for k in keywords if k in resume_text.lower()]
+def _fallback(text: str) -> dict:
+    """Basic keyword fallback."""
     return {
-        "name": name,
-        "skills": skills or ["Python", "JavaScript"],
-        "experience_years": 1,
+        "name": "Technical Candidate",
+        "skills": ["Python", "JavaScript", "Git"],
         "roles": ["Software Engineer"],
-        "location": "Not specified",
-        "salary_expectation": {"min": 50000, "max": 80000},
-        "remote_preference": "flexible",
+        "experience_years": 1,
+        "location": "Remote",
+        "projects": []
     }

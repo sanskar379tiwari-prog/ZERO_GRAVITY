@@ -7,6 +7,7 @@ Run:
 """
 
 import os
+import json
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -248,21 +249,10 @@ async def dashboard_match(payload: dict):
     query = payload.get("query", "software engineer")
     location = payload.get("location", "")
  
-    print(f"[DEBUG] /api/match request: query='{query}', location='{location}'")
-
-    if not profile or not isinstance(profile, dict):
-        print(f"[DEBUG] /api/match error: profile missing or invalid")
-        raise HTTPException(status_code=400, detail="'profile' object is required.")
-
     jobs = agent2_jobs.fetch(query=query, location=location)
-    print(f"[DEBUG] /api/match found {len(jobs)} jobs from Agent 2")
+    print(f"[DEBUG] /api/match profile skills: {profile.get('skills', [])[:5]}")
     scored_jobs = agent3_scoring.score_all(profile, jobs)
-
-    profile_skills = {
-        str(s).strip().lower()
-        for s in profile.get("skills", [])
-        if isinstance(s, str)
-    }
+    print(f"[DEBUG] /api/match found {len(scored_jobs)} jobs from Agent 3 (AI Scored)")
 
     matches = []
     for idx, job in enumerate(scored_jobs):
@@ -282,21 +272,24 @@ async def dashboard_match(payload: dict):
         reasoning = [r for r in reasoning if isinstance(r, str)]
 
         matches.append({
-            "job_id": str(job.get("id", f"job-{idx + 1}")),
+            "job_id": str(job.get("job_id", f"job-{idx + 1}")),
             "title": str(job.get("title", "Untitled Role")),
             "company": str(job.get("company", "Unknown Company")),
             "location": str(job.get("location", "Unknown")),
-            "match_score": int(score.get("match_score", 0)),
-            "reasoning": reasoning,
-            "skills_overlap": overlap,
             "description": str(job.get("description", "")),
             "url": str(job.get("url", "")),
             "remote": bool(job.get("remote", False)),
             "posted_at": str(job.get("posted_at", "")),
             "salary_min": int(job.get("salary_min", 0) or 0),
             "salary_max": int(job.get("salary_max", 0) or 0),
+            
+            # Standardized Schema Trace Keys (Guaranteed Lists)
+            "match_score": int(job.get("match_score", 0)),
+            "matched_skills": skills_list,
+            "reasoning": reasoning_list
         })
 
+    print(f"[DEBUG] Sending {len(matches)} matches to frontend with standardized keys.")
     return JSONResponse(content=matches)
 
 

@@ -157,23 +157,31 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-slate-900">
-            {(job.skills_overlap || []).map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full bg-slate-100 px-3 py-1 text-sm"
-              >
-                {skill}
-              </span>
-            ))}
+            {Array.isArray(job.matched_skills) && job.matched_skills.length > 0 ? (
+              job.matched_skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-sm"
+                >
+                  {skill}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-slate-400">No technical skills listed</span>
+            )}
           </div>
 
           <div className="mt-4">
             <p className="font-medium text-slate-100">Why Matched:</p>
 
             <ul className="list-disc pl-5 text-sm text-slate-300/85">
-              {(job.reasoning || []).map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
+              {Array.isArray(job.reasoning) && job.reasoning.length > 0 ? (
+                job.reasoning.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))
+              ) : (
+                <li>Analysis pending for this role.</li>
+              )}
             </ul>
           </div>
 

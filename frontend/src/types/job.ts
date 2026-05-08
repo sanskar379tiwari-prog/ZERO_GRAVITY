@@ -5,7 +5,7 @@ export interface JobMatch {
   location: string;
   match_score: number;
   reasoning: string[];
-  skills_overlap: string[];
+  matched_skills: string[];
   description?: string;
   url?: string;
   remote?: boolean;
