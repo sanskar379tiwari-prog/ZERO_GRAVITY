@@ -2,3 +2,9 @@ fastapi==0.111.1
 uvicorn[standard]==0.23.2
 pydantic==2.8.0
 httpx==0.28.4
+google-generativeai
+pymupdf
+reportlab
+requests
+python-dotenv
+python-multipart
