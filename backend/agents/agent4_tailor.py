@@ -11,10 +11,11 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from dotenv import load_dotenv
+from usage import tracker
 
 load_dotenv()
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-1.5-flash"
+MODEL = "gemini-3.1-flash-lite"
 
 PROMPT = """You are an expert ATS resume optimizer. Rewrite the candidate's resume for this specific job.
 
@@ -60,6 +61,7 @@ def tailor(profile: dict, job: dict, resume_text: str) -> dict:
 
 
 def _call_gemini(profile: dict, job: dict, resume_text: str) -> dict:
+    tracker.log_call("Gemini (3.1 Flash-Lite)")
     prompt = PROMPT.format(
         profile=json.dumps(profile, indent=2),
         title=job.get("title", ""),

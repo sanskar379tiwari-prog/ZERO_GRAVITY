@@ -1,63 +1,84 @@
-"""Agent 2 — Job Discovery (Google Jobs via SerpApi)
-Fetches jobs using the Google Jobs Search API.
-Falls back to mock_jobs.json if API key is missing or fails.
+"""Agent 2 — Job Discovery (JSearch API)
+The most reliable job search API on RapidAPI.
 """
 import json
 import os
+import requests
 from pathlib import Path
-from serpapi import GoogleSearch
 from dotenv import load_dotenv
+from usage import tracker
 
 load_dotenv()
 
-SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 MOCK_PATH = Path(__file__).resolve().parents[2] / "mock_jobs.json"
 
 
 def fetch(query: str = "software engineer", location: str = "", page: int = 1) -> list:
-    """Fetch jobs — Google Jobs API with mock fallback."""
-    if SERPAPI_KEY:
-        try:
-            return _google_jobs(query, location, page)
-        except Exception as e:
-            print(f"[Agent 2] Google Jobs API failed: {e}. Using mock jobs.")
+    """Fetch jobs — JSearch API with mock fallback."""
+    # Build a powerful search query by combining role + location
+    # Using 'in' keyword helps JSearch target the specific geography
+    if location:
+        full_query = f"{query} in {location}".strip()
+    else:
+        full_query = query
+        
+    print(f"[Agent 2] Fetching jobs from JSearch: '{full_query}'")
     
-    print("[Agent 2] No SerpApi key found or API failed. Using mock data.")
+    if RAPIDAPI_KEY:
+        try:
+            results = _jsearch_fetch(full_query, page)
+            if results and len(results) > 0:
+                print(f"[Agent 2] Successfully fetched {len(results)} jobs from JSearch")
+                return results
+            else:
+                print("[Agent 2] JSearch returned 0 jobs. Falling back to mock data.")
+        except Exception as e:
+            print(f"[Agent 2] JSearch API failed: {e}. Using mock jobs.")
+    
+    print("[Agent 2] No RapidAPI key or API returned 0 results. Using mock data.")
     return _mock()
 
 
-def _google_jobs(query: str, location: str, page: int) -> list:
-    """Search Google Jobs via SerpApi."""
-    search_query = f"{query} {location}".strip()
+def _jsearch_fetch(query: str, page: int) -> list:
+    """Call JSearch API via RapidAPI."""
+    tracker.log_call("JSearch (RapidAPI)")
+    url = "https://jsearch.p.rapidapi.com/search"
     
-    # SerpApi parameters for Google Jobs
-    params = {
-        "engine": "google_jobs",
-        "q": search_query,
-        "hl": "en",
-        "api_key": SERPAPI_KEY,
-        "start": (page - 1) * 10
+    querystring = {
+        "query": query,
+        "page": str(page),
+        "num_pages": "1"
     }
 
-    search = GoogleSearch(params)
-    results = search.get_dict()
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+    }
+
+    if not RAPIDAPI_KEY:
+        print("[Agent 2] WARNING: RAPIDAPI_KEY is missing from .env")
+
+    response = requests.get(url, headers=headers, params=querystring, timeout=30)
+    response.raise_for_status()
     
-    jobs_results = results.get("jobs_results", [])
+    data = response.json()
+    results = data.get("data", [])
     
     jobs = []
-    for item in jobs_results:
-        # Normalize to our internal Job schema
+    for item in results:
+        # Normalize to internal Job schema
         jobs.append({
-            "id": item.get("job_id", ""),
-            "title": item.get("title", ""),
-            "company": item.get("company_name", ""),
-            "location": item.get("location", "Remote"),
-            "remote": "remote" in (item.get("location", "").lower() + item.get("description", "").lower()),
-            "salary_min": 0, # SerpApi often doesn't give structured salary
-            "salary_max": 0,
-            "description": item.get("description", "")[:2000],
-            "posted_at": item.get("detected_extensions", {}).get("posted_at", "Recently"),
-            "url": item.get("related_links", [{}])[0].get("link", "") if item.get("related_links") else ""
+            "id": str(item.get("job_id", "")),
+            "title": item.get("job_title", ""),
+            "company": item.get("employer_name", "Unknown"),
+            "location": f"{item.get('job_city', '')}, {item.get('job_country', '')}",
+            "remote": item.get("job_is_remote", False),
+            "salary_min": item.get("job_min_salary", 0) or 0,
+            "salary_max": item.get("job_max_salary", 0) or 0,
+            "description": item.get("job_description", ""),
+            "posted_at": "Recently",
+            "url": item.get("job_apply_link", "")
         })
         
     return jobs
