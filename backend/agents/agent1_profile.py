@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-3.1-flash-lite"
+MODEL = "gemini-1.5-flash"
 
 PROFILE_SCHEMA = {
     "name": "Full Name",

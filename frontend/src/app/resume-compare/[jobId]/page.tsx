@@ -3,7 +3,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
 interface Job {
   job_id: string; title: string; company: string; location: string;
@@ -44,19 +44,37 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
     if (!rawProfile) return null;
     return JSON.parse(rawProfile) as Profile;
   });
+  const [resumeBase64] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("zg_resume_base64");
+  });
   const [job] = useState<Job | null>(() => {
     if (typeof window === "undefined") return null;
     const rawJobs = localStorage.getItem("zg_matched_jobs");
     if (!rawJobs) return null;
-    const allJobs = JSON.parse(rawJobs) as Job[];
-    return allJobs.find((jj) => jj.job_id === jobId) ?? null;
+    try {
+      const allJobs = JSON.parse(rawJobs) as any[];
+      // Flexible lookup: check both .job_id and .id
+      return allJobs.find((jj) => 
+        String(jj.job_id || jj.id) === String(jobId)
+      ) ?? null;
+    } catch (e) {
+      console.error("Error parsing saved jobs:", e);
+      return null;
+    }
   });
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState<TailoredResult | null>(null);
   const [error, setError]       = useState("");
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"compare" | "keywords">("compare");
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (!profile) {
       router.push("/");
       return;
@@ -64,16 +82,22 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
     if (!job) {
       router.push("/dashboard");
     }
-  }, [job, profile, router]);
+  }, [job, profile, router, mounted]);
 
   const tailorResume = async () => {
     if (!profile || !job) return;
     setLoading(true); setError("");
     try {
+      const bodyPayload: Record<string, unknown> = { profile, job };
+      if (resumeBase64) {
+        bodyPayload.resume_text = resumeBase64;
+        bodyPayload.format = "pdf";
+      }
+      console.log(`[API] Calling: ${API}/tailor-resume`);
       const res = await fetch(`${API}/tailor-resume`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, job }),
+        body: JSON.stringify(bodyPayload),
       });
       if (!res.ok) throw new Error(`Backend error: ${res.status}`);
       const data: TailoredResult = await res.json();
@@ -99,6 +123,8 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
     a.download = `tailored_resume_${job?.company?.replace(/\s+/g, "_")}.pdf`;
     a.click(); URL.revokeObjectURL(url);
   };
+
+  if (!mounted) return null;
 
   if (!profile || !job) return (
     <div className="min-h-screen bg-mesh flex items-center justify-center">

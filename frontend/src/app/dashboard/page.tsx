@@ -34,7 +34,19 @@ export default function DashboardPage() {
         const profileData = JSON.parse(rawProfile) as Profile;
         setProfile(profileData);
         
-        // Always fetch fresh jobs to ensure AI scoring is up-to-date with new backend logic
+        // Try to get already scored jobs from localStorage first (from the onboarding pipeline)
+        const savedJobs = localStorage.getItem("zg_matched_jobs");
+        if (savedJobs) {
+          const parsedJobs = JSON.parse(savedJobs);
+          if (parsedJobs && parsedJobs.length > 0) {
+            console.log("Using cached jobs from localStorage");
+            setJobs(parsedJobs);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Fallback to fetching if no saved jobs or empty
         console.log("Fetching fresh jobs from API");
         const data = await fetchMatchedJobs(profileData);
         setJobs(data);
@@ -175,7 +187,7 @@ export default function DashboardPage() {
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
-              href={`/resume-compare/${job.job_id}`}
+              href={`/resume-compare/${job.job_id || (job as any).id}`}
               className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-2 text-sm text-cyan-100 transition hover:bg-slate-800/80"
             >
               Tailor Resume

@@ -30,26 +30,40 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Startup Validation
+@app.get("/")
+def read_root():
+    return {"status": "online", "message": "Zero Gravity Backend API is running"}
+
+
 @app.on_event("startup")
 async def startup_event():
-    print("\n" + "="*40)
-    print("🚀 ZERO GRAVITY BACKEND STARTING")
-    if not os.getenv("GEMINI_API_KEY"):
-        print("❌ ERROR: GEMINI_API_KEY not found in .env!")
-    else:
-        print("✅ GEMINI_API_KEY: Configured")
+    print("\n" + "="*50)
+    print("ZERO GRAVITY BACKEND INITIALIZING...")
     
-    if not os.getenv("GITHUB_TOKEN"):
-        print("⚠️  WARNING: GITHUB_TOKEN not found (Rate limits will be tight)")
+    # Check Gemini
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key or len(gemini_key) < 10:
+        print("❌ WARNING: GEMINI_API_KEY is missing or too short!")
     else:
-        print("✅ GITHUB_TOKEN: Configured")
-    print("="*40 + "\n")
+        print("✅ GEMINI_API_KEY is present.")
 
+    # Check JSearch
+    jsearch_key = os.getenv("JSEARCH_API_KEY")
+    if not jsearch_key or len(jsearch_key) < 10:
+        print("❌ WARNING: JSEARCH_API_KEY is missing! Using Mock Jobs fallback.")
+    else:
+        print("✅ JSEARCH_API_KEY is present.")
+
+    print(f"Listening on: http://localhost:8001")
+    print("="*50 + "\n")
+# ---------------------------------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten for production
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -94,7 +108,7 @@ async def collect_link_data(payload: dict):
 
 @app.post("/extract-profile", tags=["agent-1"])
 async def extract_profile(
-    resume_pdf: UploadFile = File(...),
+    resume_pdf: UploadFile = File(None),
     github_url: str = Form(default=""),
     role_preference: str = Form(default=""),
     location_preference: str = Form(default=""),
@@ -104,33 +118,22 @@ async def extract_profile(
     Accept a resume PDF + optional context fields.
     Returns a structured candidate Profile JSON.
     """
-    if not resume_pdf.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+    resume_text = ""
+    if resume_pdf:
+        if not resume_pdf.filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+        pdf_bytes = await resume_pdf.read()
+        if pdf_bytes:
+            resume_text = extract_text(pdf_bytes)
 
-    pdf_bytes = await resume_pdf.read()
-    if not pdf_bytes:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-
-    try:
-        resume_text = extract_text(pdf_bytes)
-        profile = agent1_profile.extract(
-            resume_text=resume_text,
-            github_url=github_url,
-            role_preference=role_preference,
-            location_preference=location_preference,
-            remote_preference=remote_preference,
-        )
-        return JSONResponse(content=profile)
-    except Exception as e:
-        print(f"❌ [CRITICAL ERROR] Extraction Pipeline Failed: {e}")
-        # Return a minimum viable profile so the frontend doesn't crash
-        return JSONResponse(content={
-            "name": "Candidate",
-            "skills": ["Python"], # Minimal fallback
-            "roles": [role_preference or "Software Engineer"],
-            "experience_years": 1,
-            "projects": []
-        })
+    profile = agent1_profile.extract(
+        resume_text=resume_text,
+        github_url=github_url,
+        role_preference=role_preference,
+        location_preference=location_preference,
+        remote_preference=remote_preference,
+    )
+    return JSONResponse(content=profile)
 
 
 # ---------------------------------------------------------------------------
@@ -186,20 +189,30 @@ async def score_jobs(payload: dict):
 
     scored = agent3_scoring.score_all(profile, jobs)
     
-    # Add dashboard-compatible fields (overlap, etc.)
+    # Standardize response shape exactly as requested
     profile_skills = {str(s).strip().lower() for s in profile.get("skills", []) if isinstance(s, str)}
+    standardized = []
     for job in scored:
         score_obj = job.get("score", {})
         job_skills = [s for s in job.get("skills", []) if isinstance(s, str)]
         
-        job["job_id"] = str(job.get("id", ""))
-        job["match_score"] = int(score_obj.get("match_score", 0))
-        job["reasoning"] = score_obj.get("reasoning", [])
-        job["skills_overlap"] = [s for s in job_skills if s.strip().lower() in profile_skills]
-        if not job["skills_overlap"]:
-            job["skills_overlap"] = job_skills[:3]
+        standardized.append({
+            "job_id": str(job.get("id", "")),
+            "title": str(job.get("title", "")),
+            "company": str(job.get("company", "")),
+            "location": str(job.get("location", "")),
+            "match_score": int(score_obj.get("match_score", 0)),
+            "reasoning": score_obj.get("reasoning", []),
+            "skills_overlap": [s for s in job_skills if s.strip().lower() in profile_skills],
+            "description": str(job.get("description", "")),
+            "url": str(job.get("url", "")),
+            "remote": bool(job.get("remote", False)),
+            "posted_at": str(job.get("posted_at", "")),
+            "salary_min": int(job.get("salary_min", 0) or 0),
+            "salary_max": int(job.get("salary_max", 0) or 0),
+        })
 
-    return JSONResponse(content=scored)
+    return JSONResponse(content=standardized)
 
 
 # ---------------------------------------------------------------------------
@@ -243,12 +256,20 @@ async def dashboard_match(payload: dict):
 
     matches = []
     for idx, job in enumerate(scored_jobs):
-        # Universal Data Guard: Force everything into lists
-        raw_reasoning = job.get("reasoning", ["Match analyzed."])
-        reasoning_list = [raw_reasoning] if isinstance(raw_reasoning, str) else raw_reasoning
-        
-        raw_skills = job.get("matched_skills", [])
-        skills_list = [raw_skills] if isinstance(raw_skills, str) else raw_skills
+        score = job.get("score", {}) if isinstance(job.get("score"), dict) else {}
+        job_skills = [
+            s for s in job.get("skills", []) if isinstance(s, str)
+        ]
+
+        overlap = [
+            skill for skill in job_skills
+            if skill.strip().lower() in profile_skills
+        ]
+
+        reasoning = score.get("reasoning", [])
+        if not isinstance(reasoning, list):
+            reasoning = []
+        reasoning = [r for r in reasoning if isinstance(r, str)]
 
         matches.append({
             "job_id": str(job.get("job_id", f"job-{idx + 1}")),
@@ -279,23 +300,23 @@ async def dashboard_match(payload: dict):
 
 @app.post("/tailor-resume", tags=["agent-4"])
 async def tailor_resume(payload: dict):
-    """
-    Tailor a resume for a specific job.
+    """Tailor a resume for a specific job."""
+    print(f"\n>>> RECEIVED TAILOR REQUEST for job: {payload.get('job', {}).get('title', 'Unknown')}", flush=True)
+    try:
+        profile = payload.get("profile")
+        job = payload.get("job")
+        resume_text = payload.get("resume_text", "")
+        
+        if not profile or not job:
+            raise HTTPException(status_code=400, detail="Profile and Job are required.")
 
-    Body: { "profile": {...}, "job": {...}, "resume_text": "..." }
-    Returns: { tailored_sections, pdf_base64, ats_keywords }
-    """
-    profile = payload.get("profile")
-    job = payload.get("job")
-    resume_text = payload.get("resume_text", "")
-
-    if not profile or not isinstance(profile, dict):
-        raise HTTPException(status_code=400, detail="'profile' is required.")
-    if not job or not isinstance(job, dict):
-        raise HTTPException(status_code=400, detail="'job' is required.")
-
-    result = agent4_tailor.tailor(profile=profile, job=job, resume_text=resume_text)
-    return JSONResponse(content=result)
+        result = agent4_tailor.tailor(profile, job, resume_text=resume_text)
+        return JSONResponse(content=result)
+    except Exception as e:
+        print(f">>> [DEBUG] FATAL ERROR DURING TAILORING: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +340,7 @@ async def draft_email(payload: dict):
     if not job or not isinstance(job, dict):
         raise HTTPException(status_code=400, detail="'job' is required.")
 
-    draft = agent5_outreach.draft(profile=profile, job=job)
+    draft = agent5_outreach.generate(profile=profile, job=job)
     return JSONResponse(content=draft)
 
 
@@ -337,7 +358,7 @@ async def send_outreach_email(payload: dict):
       "to": "recruiter@company.com",
       "subject": "...",
       "email_body": "...",
-      "pdf_base64": "..."    (optional — tailored resume attachment)
+      "pdf_base64": "..."    (optional - tailored resume attachment)
     }
     """
     to = payload.get("to", "").strip()
