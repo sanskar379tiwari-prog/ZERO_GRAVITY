@@ -35,8 +35,11 @@ _interviews_mem: Dict[str, dict] = {}
 VALID_STATUSES = {"Applied", "Pending", "Interview", "Rejected", "Offer"}
 
 # ---------------------------------------------------------------------------
-# Application helpers
+# Application Tracking
 # ---------------------------------------------------------------------------
+
+_memory_apps: Dict[str, Dict[str, Any]] = {}
+VALID_STATUSES = {"Applied", "Pending", "Interview", "Rejected", "Offer"}
 
 def create_application(
     job_id: str,
@@ -89,6 +92,11 @@ def get_applications() -> list:
         reverse=True,
     )
 
+    # Try Supabase first
+    record = _sb_post("applications", payload)
+    if record:
+        record["app_id"] = str(record.get("id"))
+        return record
 
 def update_status(app_id: str, status: str) -> Optional[dict]:
     """Update the status of an existing application."""

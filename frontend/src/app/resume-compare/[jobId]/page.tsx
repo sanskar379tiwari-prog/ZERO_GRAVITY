@@ -54,9 +54,9 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
     if (!rawJobs) return null;
     try {
       const allJobs = JSON.parse(rawJobs) as any[];
-      // Flexible lookup: check both .job_id and .id
+      const decodedId = decodeURIComponent(jobId);
       return allJobs.find((jj) => 
-        String(jj.job_id || jj.id) === String(jobId)
+        String(jj.job_id || jj.id) === decodedId || String(jj.job_id || jj.id) === jobId
       ) ?? null;
     } catch (e) {
       console.error("Error parsing saved jobs:", e);
