@@ -5,8 +5,6 @@ from datetime import datetime
 class UsageTracker:
     def __init__(self):
         self.stats = {
-            "Gemini (3.1 Flash-Lite)": 0,
-            "JSearch (RapidAPI)": 0,
             "Total Calls": 0
         }
         self.lock = threading.Lock()

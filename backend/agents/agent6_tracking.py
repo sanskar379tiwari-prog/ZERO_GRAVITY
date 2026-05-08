@@ -1,11 +1,11 @@
-"""Agent 6 — Application Tracking & Interview Scheduling (Supabase)
+<"""Agent 6 — Application Tracking & Interview Scheduling (Supabase)
 Manages application state and basic interview slot conflict detection.
 Uses Supabase for persistent storage on Render.
 """
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -48,6 +48,7 @@ def create_application(
     """Create and store a new application record."""
     app_id = f"app-{uuid.uuid4().hex[:8]}"
     now = datetime.utcnow().isoformat() + "Z"
+    validated_status = status if status in VALID_STATUSES else "Applied"
     
     record = {
         "app_id": app_id,
@@ -55,7 +56,7 @@ def create_application(
         "job_title": job_title,
         "company": company,
         "profile_name": profile_name,
-        "status": status if status in VALID_STATUSES else "Applied",
+        "status": validated_status,
         "created_at": now,
         "updated_at": now,
         "interview_id": None,
@@ -68,7 +69,6 @@ def create_application(
             return record
         except Exception as e:
             print(f"❌ Supabase Insert Error: {e}")
-            # Fallback to memory on error
     
     _applications_mem[app_id] = record
     return record

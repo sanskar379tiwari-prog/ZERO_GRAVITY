@@ -114,3 +114,4 @@ def _fallback(text: str) -> dict:
         "location": "Remote",
         "projects": []
     }
+

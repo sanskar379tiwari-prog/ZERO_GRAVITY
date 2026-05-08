@@ -12,7 +12,7 @@ class OptimizationEngine:
     
     MAX_ITERATIONS = 2  # Keep LLM calls efficient
     
-    def __init__(self, client: genai.Client, model: str = "gemini-1.5-flash"):
+    def __init__(self, client: genai.Client, model: str = "gemma-3-27b-it"):
         self.client = client
         self.model = model
     
@@ -275,9 +275,6 @@ class OptimizationEngine:
         
         if quality["keyword_match"] < 0.5:
             issues.append(f"Poor keyword match ({quality['keyword_match']}). Add more job-specific keywords.")
-        
-        if quality["hallucinations"]:
-            issues.append(f"Unsubstantiated claims: {quality['hallucinations'][0]}")
         
         if quality["ai_score"] > 0.4:
             issues.append("Use more natural, specific language. Reduce generic corporate phrases.")
