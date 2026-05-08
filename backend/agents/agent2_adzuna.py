@@ -1,5 +1,5 @@
-"""Agent 2.2 — Adzuna Job Source
-Fetches jobs from the Adzuna API and normalizes them to the Zero Gravity schema.
+"""Agent 2.2 — Adzuna Job Source (via RapidAPI)
+Fetches jobs from the Adzuna API using the RapidAPI Hub.
 """
 import os
 import requests
@@ -8,26 +8,30 @@ from usage import tracker
 
 load_dotenv(override=True)
 
-ADZUNA_APP_ID = os.getenv("ADZUNA_APP_ID", "")
-ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "")
+RAPIDAPI_KEY = os.getenv("JSEARCH_API_KEY", "") # Reuse the same RapidAPI key
+ADZUNA_HOST = "adzuna-adzuna-v1.p.rapidapi.com" # Common RapidAPI Adzuna host
 
 def fetch(query: str, location: str = "", country: str = "us", limit: int = 20) -> list:
-    """Fetch jobs from Adzuna."""
-    if not ADZUNA_APP_ID or not ADZUNA_APP_KEY:
-        print("[Agent 2.2 Adzuna] WARNING: ADZUNA_APP_ID or APP_KEY missing. Skipping source.")
+    """Fetch jobs from Adzuna via RapidAPI."""
+    if not RAPIDAPI_KEY:
+        print("[Agent 2.2 Adzuna] ERROR: RapidAPI Key missing.")
         return []
 
-    print(f"[Agent 2.2 Adzuna] Fetching jobs for '{query}' in {location} ({country})")
-    tracker.log_call("Adzuna API")
+    print(f"[Agent 2.2 Adzuna] Fetching jobs for '{query}' in {location} via RapidAPI")
+    tracker.log_call("Adzuna (RapidAPI)")
     
-    # Adzuna uses different formatting for location/pagination
-    url = f"https://api.adzuna.com/v1/api/jobs/{country}/search/1"
+    # Adzuna RapidAPI URL structure
+    # Country code is part of the path
+    url = f"https://{ADZUNA_HOST}/jobs/{country}/search/1"
+    
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": ADZUNA_HOST
+    }
     
     params = {
-        "app_id": ADZUNA_APP_ID,
-        "app_key": ADZUNA_APP_KEY,
-        "results_per_page": limit,
         "what": query,
+        "results_per_page": str(limit),
         "content-type": "application/json"
     }
     
@@ -35,13 +39,14 @@ def fetch(query: str, location: str = "", country: str = "us", limit: int = 20) 
         params["where"] = location
 
     try:
-        response = requests.get(url, params=params, timeout=15)
+        response = requests.get(url, headers=headers, params=params, timeout=15)
         response.raise_for_status()
         data = response.json()
         results = data.get("results", [])
         
         jobs = []
         for item in results:
+            # Schema normalization
             jobs.append({
                 "id": str(item.get("id", "")),
                 "source": "Adzuna",
@@ -56,8 +61,7 @@ def fetch(query: str, location: str = "", country: str = "us", limit: int = 20) 
                 "url": item.get("redirect_url", "")
             })
         
-        print(f"[Agent 2.2 Adzuna] Successfully fetched {len(jobs)} jobs.")
         return jobs
     except Exception as e:
-        print(f"[Agent 2.2 Adzuna] Error: {e}")
+        print(f"[Agent 2.2 Adzuna] RapidAPI Error: {e}")
         return []
