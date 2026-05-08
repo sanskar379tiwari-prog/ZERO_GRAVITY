@@ -89,170 +89,140 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-mesh flex flex-col items-center justify-center px-4 py-16">
-      {/* Header */}
-      <div className="text-center mb-12 animate-slide-up">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border mb-6"
-             style={{ borderColor: "rgba(108,99,255,0.3)" }}>
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-glow" />
-          <span className="text-sm font-medium" style={{ color: "var(--accent-secondary)" }}>
-            AI-Powered Job Matching
-          </span>
-        </div>
-        <h1 className="text-5xl md:text-6xl font-bold mb-4 leading-tight">
-          <span className="gradient-text">Zero Gravity</span>
-        </h1>
-        <p className="text-xl max-w-xl mx-auto" style={{ color: "var(--text-secondary)" }}>
-          Upload your resume. Let AI find, score, and tailor the best opportunities for you — in seconds.
-        </p>
+    <main className="relative min-h-screen overflow-hidden bg-[#041423] px-4 py-16">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,180,220,0.18),rgba(4,20,35,0.95)_48%)]" />
+      <div className="pointer-events-none absolute inset-0">
+        {["top-20 left-[12%]", "top-40 left-[72%]", "top-[62%] left-[14%]", "top-[70%] left-[84%]"].map((star) => (
+          <span
+            key={star}
+            className={`absolute h-1.5 w-1.5 rounded-full bg-white/80 shadow-[0_0_14px_rgba(255,255,255,0.7)] ${star}`}
+          />
+        ))}
       </div>
 
-      {/* Main card */}
-      <div className="w-full max-w-2xl animate-slide-up" style={{ animationDelay: "0.1s" }}>
-        <div className="card p-8 glow-purple">
+      <div className="relative mx-auto max-w-4xl rounded-2xl border border-cyan-300/20 bg-[#061a2c]/80 p-8 backdrop-blur-sm md:p-12">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <p className="mb-3 text-sm tracking-wide text-cyan-200/80">Zero Gravity AI</p>
+          <h1 className="text-4xl font-semibold leading-tight text-slate-100 md:text-6xl">
+            Find Matches.
+            <br />
+            Score, Tailor,
+            <br />
+            Apply Faster.
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-sm text-slate-300/80 md:text-base">
+            Minimal workflow: upload your resume, run the AI pipeline, and move directly to your personalized job dashboard.
+          </p>
+        </div>
 
-          {/* Drop Zone */}
+        <div className="mx-auto max-w-2xl space-y-4">
           <div
             id="resume-drop-zone"
             onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className="relative flex flex-col items-center justify-center rounded-xl cursor-pointer transition-all duration-300 mb-6 p-10 text-center"
+            className="cursor-pointer rounded-xl border border-dashed p-6 text-center transition-all"
             style={{
-              border: `2px dashed ${dragging || file ? "var(--accent-primary)" : "var(--border-subtle)"}`,
-              background: dragging ? "rgba(108,99,255,0.08)" : file ? "rgba(16,217,160,0.05)" : "rgba(255,255,255,0.02)",
-              minHeight: 180,
+              borderColor: dragging || file ? "rgba(125,211,252,0.9)" : "rgba(148,163,184,0.4)",
+              background: dragging ? "rgba(14,116,144,0.25)" : "rgba(15,23,42,0.5)",
             }}
           >
-            {file ? (
-              <>
-                <div className="text-5xl mb-3 animate-float">✅</div>
-                <p className="font-semibold text-lg" style={{ color: "var(--accent-green)" }}>{file.name}</p>
-                <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-                  {(file.size / 1024).toFixed(1)} KB · Click to change
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-5xl mb-3 animate-float">📄</div>
-                <p className="font-semibold text-lg" style={{ color: "var(--text-primary)" }}>
-                  Drop your resume here
-                </p>
-                <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-                  PDF only · or click to browse
-                </p>
-              </>
+            <p className="text-base font-medium text-slate-100">
+              {file ? `Selected: ${file.name}` : "Drop resume PDF or click to upload"}
+            </p>
+            {file && (
+              <p className="mt-1 text-sm text-slate-300/75">
+                {(file.size / 1024).toFixed(1)} KB
+              </p>
             )}
             <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} id="resume-file-input" />
           </div>
 
-          {/* Optional fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                Target Role
-              </label>
-              <input id="role-input" className="input-dark" placeholder="e.g. Software Engineer" value={role} onChange={(e) => setRole(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                Preferred Location
-              </label>
-              <input id="location-input" className="input-dark" placeholder="e.g. New York, Remote" value={location} onChange={(e) => setLocation(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                GitHub URL <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span>
-              </label>
-              <input id="github-input" className="input-dark" placeholder="https://github.com/username" value={github} onChange={(e) => setGithub(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                Remote Preference
-              </label>
-              <select id="remote-select" className="input-dark" value={remote} onChange={(e) => setRemote(e.target.value)}
-                style={{ cursor: "pointer" }}>
-                <option value="flexible">Flexible</option>
-                <option value="remote">Remote Only</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="onsite">On-site</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <input
+              id="role-input"
+              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              placeholder="Target role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            />
+            <input
+              id="location-input"
+              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              placeholder="Preferred location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+            <input
+              id="github-input"
+              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              placeholder="GitHub URL (optional)"
+              value={github}
+              onChange={(e) => setGithub(e.target.value)}
+            />
+            <select
+              id="remote-select"
+              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              value={remote}
+              onChange={(e) => setRemote(e.target.value)}
+            >
+              <option value="flexible">Flexible</option>
+              <option value="remote">Remote Only</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">On-site</option>
+            </select>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-              LinkedIn About <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional — paste section text)</span>
-            </label>
-            <textarea id="linkedin-input" className="input-dark resize-none" rows={3}
-              placeholder="Paste your LinkedIn About section here for better profile accuracy..."
-              value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
-          </div>
+          <textarea
+            id="linkedin-input"
+            className="w-full resize-none rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+            rows={3}
+            placeholder="LinkedIn about text (optional)"
+            value={linkedin}
+            onChange={(e) => setLinkedin(e.target.value)}
+          />
 
-          {/* Error */}
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium"
-                 style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444" }}>
-              ⚠️ {error}
+            <div className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {error}
             </div>
           )}
 
-          {/* Pipeline progress */}
           {loading && (
-            <div className="mb-6 rounded-xl p-4 glass" style={{ border: "1px solid var(--border)" }}>
-              <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>Running AI Pipeline…</p>
-              <div className="space-y-2">
+            <div className="rounded-lg border border-cyan-300/30 bg-slate-900/50 px-4 py-3 text-sm text-slate-200">
+              <p className="mb-2 font-medium">Running AI pipeline...</p>
+              <div className="space-y-1.5">
                 {STEPS.map((step) => (
-                  <div key={step.id} className="flex items-center gap-3">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
-                      currentStep > step.id ? "bg-green-500 text-white" :
-                      currentStep === step.id ? "animate-pulse-glow text-white" : "text-gray-600"
-                    }`}
-                    style={{ background: currentStep > step.id ? "#10d9a0" : currentStep === step.id ? "var(--accent-primary)" : "rgba(255,255,255,0.05)" }}>
-                      {currentStep > step.id ? "✓" : step.icon}
-                    </div>
-                    <span className="text-sm" style={{ color: currentStep >= step.id ? "var(--text-primary)" : "var(--text-muted)" }}>
-                      {step.label}
-                    </span>
-                    {currentStep === step.id && (
-                      <div className="ml-auto flex gap-1">
-                        {[0,1,2].map(i => (
-                          <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                            style={{ background: "var(--accent-primary)", animationDelay: `${i * 0.15}s` }} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <p key={step.id} className={currentStep >= step.id ? "text-cyan-200" : "text-slate-400"}>
+                    {currentStep > step.id ? "✓" : "•"} {step.label}
+                  </p>
                 ))}
               </div>
             </div>
           )}
 
-          {/* CTA */}
-          <button
-            id="analyze-btn"
-            onClick={runPipeline}
-            disabled={loading}
-            className="btn-primary w-full text-base py-4 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span>{loading ? "Analyzing…" : "🚀 Analyze My Resume"}</span>
-          </button>
-
-          <p className="text-center text-xs mt-4" style={{ color: "var(--text-muted)" }}>
-            No data stored on our servers · Your resume is processed in real-time
-          </p>
+          <div className="flex flex-wrap justify-center gap-3 pt-1">
+            <button
+              id="analyze-btn"
+              onClick={runPipeline}
+              disabled={loading}
+              className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-6 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Processing..." : "Start Matching"}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-white"
+            >
+              Open Dashboard
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Feature pills */}
-      <div className="flex flex-wrap justify-center gap-3 mt-10 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-        {["🧠 Gemini AI Profile", "🔍 Real Job Discovery", "⚡ ATS Scoring", "📝 Resume Tailoring"].map((f) => (
-          <span key={f} className="px-4 py-2 rounded-full text-sm glass"
-                style={{ color: "var(--text-secondary)", border: "1px solid var(--border-subtle)" }}>
-            {f}
-          </span>
-        ))}
       </div>
     </main>
   );
