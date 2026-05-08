@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
-from agents import agent1_profile, agent2_jobs, agent3_scoring, agent4_tailor
+from agents import agent0_enrichment, agent1_profile, agent2_jobs, agent3_scoring, agent4_tailor
 from agents import agent5_outreach, agent6_tracking
 from resume_parser import extract_text
 from email_sender import send_email
@@ -45,6 +45,28 @@ app.add_middleware(
 @app.get("/health", tags=["health"])
 def health_check():
     return {"status": "ok", "service": "zero-gravity-backend"}
+
+
+# ---------------------------------------------------------------------------
+# Agent 0 — Social Link Enrichment
+# POST /collect-link-data
+# ---------------------------------------------------------------------------
+
+@app.post("/collect-link-data", tags=["agent-0"])
+async def collect_link_data(payload: dict):
+    """
+    Collect profile signals from GitHub and LinkedIn links.
+
+    Body:
+      {
+        "github_url": "...",
+        "linkedin_url": "..."
+      }
+    """
+    github_url = payload.get("github_url", "")
+    linkedin_url = payload.get("linkedin_url", "")
+    data = agent0_enrichment.collect(github_url=github_url, linkedin_url=linkedin_url)
+    return JSONResponse(content=data)
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +205,7 @@ async def dashboard_match(payload: dict):
     }
 
     matches = []
-    for job in scored_jobs:
+    for idx, job in enumerate(scored_jobs):
         score = job.get("score", {}) if isinstance(job.get("score"), dict) else {}
         job_skills = [
             s for s in job.get("skills", []) if isinstance(s, str)
@@ -202,13 +224,19 @@ async def dashboard_match(payload: dict):
         reasoning = [r for r in reasoning if isinstance(r, str)]
 
         matches.append({
-            "job_id": str(job.get("id", "")),
+            "job_id": str(job.get("id", f"job-{idx + 1}")),
             "title": str(job.get("title", "Untitled Role")),
             "company": str(job.get("company", "Unknown Company")),
             "location": str(job.get("location", "Unknown")),
             "match_score": int(score.get("match_score", 0)),
             "reasoning": reasoning,
             "skills_overlap": overlap,
+            "description": str(job.get("description", "")),
+            "url": str(job.get("url", "")),
+            "remote": bool(job.get("remote", False)),
+            "posted_at": str(job.get("posted_at", "")),
+            "salary_min": int(job.get("salary_min", 0) or 0),
+            "salary_max": int(job.get("salary_max", 0) or 0),
         })
 
     return JSONResponse(content=matches)
