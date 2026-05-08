@@ -30,13 +30,13 @@ def create_application(
     """Create and store a new application record."""
     app_id = f"app-{uuid.uuid4().hex[:8]}"
     record = {
-        "id": app_id,
+        "app_id": app_id,
         "job_id": job_id,
         "job_title": job_title,
         "company": company,
         "profile_name": profile_name,
         "status": status if status in VALID_STATUSES else "Applied",
-        "applied_at": datetime.utcnow().isoformat() + "Z",
+        "created_at": datetime.utcnow().isoformat() + "Z",
         "updated_at": datetime.utcnow().isoformat() + "Z",
         "interview_id": None,
         "notes": "",
@@ -49,7 +49,7 @@ def get_applications() -> list:
     """Return all tracked applications sorted by most recent."""
     return sorted(
         _applications.values(),
-        key=lambda a: a["applied_at"],
+        key=lambda a: a["created_at"],
         reverse=True,
     )
 

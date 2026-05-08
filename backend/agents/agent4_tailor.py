@@ -1,109 +1,69 @@
-"""Agent 4 — Resume Tailoring
-Calls Gemini to rewrite resume sections optimised for a specific job,
-then generates a clean ATS-ready PDF with ReportLab.
+"""Agent 4 — Resume Tailoring (Enhanced)
+Uses OptimizationEngine with multi-filter validation.
+Supports multiple input formats (PDF, HTML, text) and generates ATS-ready PDFs.
 """
 import io, json, os, base64
+from typing import Optional
 from google import genai
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.units import inch
+from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from dotenv import load_dotenv
+from agents.optimization_engine import OptimizationEngine
+from agents.resume_parser import parse_resume
 from usage import tracker
 
 load_dotenv()
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-3.1-flash-lite"
+MODEL = "gemini-1.5-flash"
+_optimizer = OptimizationEngine(_client, MODEL)
 
-PROMPT = """You are an expert ATS resume optimizer. Rewrite the candidate's resume for this specific job.
-
-CANDIDATE PROFILE:
-{profile}
-
-JOB:
-Title: {title}
-Company: {company}
-Description: {description}
-
-ORIGINAL RESUME TEXT:
-{resume_text}
-
-Return ONLY a JSON object (no markdown):
-{{
-  "name": "candidate full name",
-  "contact_line": "email | phone | location | linkedin",
-  "summary": "2-3 sentence professional summary tailored to the job",
-  "skills": ["skill1", "skill2"],
-  "experience": [
-    {{
-      "title": "Job Title",
-      "company": "Company",
-      "duration": "Jan 2023 – Present",
-      "bullets": ["achievement 1", "achievement 2"]
-    }}
-  ],
-  "education": [{{"degree": "B.S. CS", "school": "University", "year": "2022"}}],
-  "projects": [{{"name": "Project", "description": "1-2 sentences with keywords"}}],
-  "ats_keywords_injected": ["kw1", "kw2"]
-}}"""
-
-
-def tailor(profile: dict, job: dict, resume_text: str) -> dict:
-    sections = _call_gemini(profile, job, resume_text)
+def tailor(
+    profile: dict, 
+    job: dict, 
+    resume_text: str,
+    format: Optional[str] = None,
+    user_instructions: Optional[str] = None,
+    debug: bool = False
+) -> dict:
+    """
+    Tailor resume with multi-filter validation.
+    
+    Args:
+        profile: Candidate profile (from agent1)
+        job: Job posting (from agent2)
+        resume_text: Resume content (string or bytes)
+        format: Optional format hint ("pdf", "html", "text")
+        user_instructions: Optional guidance ("Focus on Python", etc.)
+        debug: Include iteration history
+    """
+    tracker.log_call("Agent 4 (Resume Tailor)")
+    
+    # Parse resume if not plain text
+    if format or isinstance(resume_text, bytes):
+        resume_text = parse_resume(resume_text, format)
+    
+    # Optimize with validation
+    result = _optimizer.optimize(
+        profile, job, resume_text, 
+        user_instructions=user_instructions,
+        debug=debug
+    )
+    
+    # Generate PDF
+    sections = result["tailored_sections"]
     pdf_bytes = _build_pdf(sections)
+    
     return {
         "tailored_sections": sections,
         "pdf_base64": base64.b64encode(pdf_bytes).decode("utf-8"),
         "ats_keywords": sections.get("ats_keywords_injected", []),
-    }
-
-
-def _call_gemini(profile: dict, job: dict, resume_text: str) -> dict:
-    tracker.log_call("Gemini (3.1 Flash-Lite)")
-    prompt = PROMPT.format(
-        profile=json.dumps(profile, indent=2),
-        title=job.get("title", ""),
-        company=job.get("company", ""),
-        description=job.get("description", "")[:1500],
-        resume_text=resume_text[:3000],
-    )
-    model = MODEL
-    for attempt in range(3):
-        try:
-            response = _client.models.generate_content(
-                model=model,
-                contents=prompt,
-            )
-            raw = response.text.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```", 2)[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            return json.loads(raw.strip())
-        except json.JSONDecodeError as e:
-            print(f"[Agent 4] JSON parse error (attempt {attempt+1}): {e}")
-        except Exception as e:
-            print(f"[Agent 4] Gemini error: {e}. Using fallback.")
-            break
-    return _fallback(profile, job)
-
-
-def _fallback(profile: dict, job: dict) -> dict:
-    return {
-        "name": profile.get("name", "Candidate"),
-        "contact_line": profile.get("location", ""),
-        "summary": (
-            f"Motivated professional seeking {job.get('title', 'a software')} role "
-            f"at {job.get('company', 'your company')}. "
-            "Passionate about delivering high-quality solutions."
-        ),
-        "skills": profile.get("skills", []),
-        "experience": [],
-        "education": [],
-        "projects": [],
-        "ats_keywords_injected": [],
+        "quality_report": result.get("quality_report"),
+        "success": result.get("success"),
+        "debug_iterations": result.get("iterations") if debug else None,
     }
 
 
@@ -139,42 +99,67 @@ def _build_pdf(s: dict) -> bytes:
 
     story = []
 
-    story.append(Paragraph(s.get("name", "Your Name"), name_style))
-    if s.get("contact_line"):
-        story.append(Paragraph(s["contact_line"], contact_style))
+    # Header
+    story.append(Paragraph(s.get("name", "Candidate"), name_style))
+    story.append(Paragraph(s.get("contact_line", ""), contact_style))
+    story.append(Spacer(1, 10))
 
-    if s.get("summary"):
-        story.append(hr_bold())
+    # Summary
+    summary_text = s.get("professional_summary") or s.get("summary")
+    if summary_text:
         story.append(Paragraph("PROFESSIONAL SUMMARY", h_style))
-        story.append(Paragraph(s["summary"], body_style))
+        story.append(Paragraph(summary_text, body_style))
+        story.append(Spacer(1, 4))
 
+    # Skills
     if s.get("skills"):
         story.append(hr())
         story.append(Paragraph("TECHNICAL SKILLS", h_style))
-        story.append(Paragraph(" • ".join(s["skills"]), body_style))
+        
+        skills = s["skills"]
+        chunks = [skills[i:i + 6] for i in range(0, len(skills), 6)]
+        for chunk in chunks:
+            story.append(Paragraph(" • ".join(chunk), body_style))
+        story.append(Spacer(1, 4))
 
+    # Experience
     if s.get("experience"):
         story.append(hr())
-        story.append(Paragraph("EXPERIENCE", h_style))
+        story.append(Paragraph("PROFESSIONAL EXPERIENCE", h_style))
+        story.append(Spacer(1, 4))
+        
         for exp in s["experience"]:
-            story.append(Paragraph(f"{exp.get('title','')} — {exp.get('company','')}", job_style))
+            role = exp.get("role") or exp.get("title", "")
+            company = exp.get("company", "")
+            story.append(Paragraph(f"{role} — {company}", job_style))
             story.append(Paragraph(exp.get("duration", ""), dur_style))
             for b in exp.get("bullets", []):
                 story.append(Paragraph(f"• {b}", bullet_style))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 6))
 
-    if s.get("education"):
-        story.append(hr())
-        story.append(Paragraph("EDUCATION", h_style))
-        for ed in s["education"]:
-            story.append(Paragraph(
-                f"{ed.get('degree','')} — {ed.get('school','')} ({ed.get('year','')})", body_style))
-
+    # Projects
     if s.get("projects"):
         story.append(hr())
         story.append(Paragraph("PROJECTS", h_style))
+        story.append(Spacer(1, 4))
+        
         for p in s["projects"]:
-            story.append(Paragraph(f"<b>{p.get('name','')}</b>: {p.get('description','')}", body_style))
+            title = p.get("title") or p.get("name", "")
+            story.append(Paragraph(title, job_style))
+            story.append(Paragraph(p.get("description", ""), body_style))
+            story.append(Spacer(1, 6))
+
+    # Education
+    if s.get("education"):
+        story.append(hr())
+        story.append(Paragraph("EDUCATION", h_style))
+        story.append(Spacer(1, 4))
+        
+        for ed in s["education"]:
+            inst = ed.get("institution") or ed.get("school", "")
+            story.append(Paragraph(inst, job_style))
+            story.append(Paragraph(f"{ed.get('degree', '')} — {ed.get('year', '')}", body_style))
+            story.append(Spacer(1, 4))
 
     if s.get("ats_keywords_injected"):
         story.append(hr())

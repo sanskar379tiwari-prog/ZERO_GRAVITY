@@ -35,7 +35,7 @@ export default function DashboardPage() {
         setProfile(profileData);
         
         // Try to get already scored jobs from localStorage first (from the onboarding pipeline)
-        const savedJobs = localStorage.getItem("zg_jobs");
+        const savedJobs = localStorage.getItem("zg_matched_jobs");
         if (savedJobs) {
           const parsedJobs = JSON.parse(savedJobs);
           if (parsedJobs && parsedJobs.length > 0) {
@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
-              href={`/resume-compare/${job.job_id}`}
+              href={`/resume-compare/${job.job_id || (job as any).id}`}
               className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-2 text-sm text-cyan-100 transition hover:bg-slate-800/80"
             >
               Tailor Resume

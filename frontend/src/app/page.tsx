@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
 const STEPS = [
   { id: 1, label: "Parsing Resume",      icon: "📄" },
@@ -57,29 +57,6 @@ function extractSkillsFromText(text: string): string[] {
   return seedSkills.filter((skill) => lower.includes(skill.toLowerCase()));
 }
 
-function buildProfileFromLinks(input: {
-  role: string;
-  location: string;
-  remote: string;
-  github: string;
-  linkedin: string;
-  linkedinUrl: string;
-}): Profile {
-  const inferredSkills = extractSkillsFromText(`${input.linkedin} ${input.github}`);
-  return {
-    name: "Candidate",
-    skills: inferredSkills.length ? inferredSkills : ["Communication", "Problem Solving"],
-    experience_years: 1,
-    roles: [input.role || "Software Engineer"],
-    location: input.location || "Remote",
-    salary_expectation: { min: 0, max: 0 },
-    remote_preference: input.remote,
-    github_url: input.github || undefined,
-    linkedin_about: input.linkedin || undefined,
-    linkedin_url: input.linkedinUrl || undefined,
-  };
-}
-
 function extractGithubUsername(githubUrl: string): string {
   if (!githubUrl.trim()) return "";
   try {
@@ -119,6 +96,7 @@ export default function OnboardingPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile]               = useState<File | null>(null);
+  const [resumeBase64, setResumeBase64] = useState<string | null>(null);
   const [dragging, setDragging]       = useState(false);
   const [linkedin, setLinkedin]       = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
@@ -148,18 +126,50 @@ export default function OnboardingPage() {
   }, [github, linkedin, linkedinUrl, role, location, remote]);
 
   // ── drag-drop ──────────────────────────────────────────────────────────────
-  const onDrop = useCallback((e: React.DragEvent) => {
+  const readFileAsBase64 = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(",")[1] ?? "";
+        resolve(base64);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const onDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
     const f = e.dataTransfer.files[0];
-    if (f?.type === "application/pdf") setFile(f);
-    else setError("Please upload a PDF file.");
+    if (f?.type === "application/pdf") {
+      setFile(f);
+      setError("");
+      try {
+        const base64 = await readFileAsBase64(f);
+        setResumeBase64(base64);
+      } catch (err) {
+        setError("Failed to read resume file.");
+      }
+    } else {
+      setError("Please upload a PDF file.");
+    }
   }, []);
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f?.type === "application/pdf") { setFile(f); setError(""); }
-    else setError("Please upload a PDF file.");
+    if (f?.type === "application/pdf") {
+      setFile(f); setError("");
+      try {
+        const base64 = await readFileAsBase64(f);
+        setResumeBase64(base64);
+      } catch (err) {
+        setError("Failed to read resume file.");
+      }
+    } else {
+      setError("Please upload a PDF file.");
+    }
   };
 
   // ── pipeline ───────────────────────────────────────────────────────────────
@@ -173,25 +183,20 @@ export default function OnboardingPage() {
 
     try {
       let profile: Profile;
-      if (file) {
-        // Step 1+2: Upload + extract profile
-        const form = new FormData();
-        form.append("resume_pdf", file);
-        if (linkedin) form.append("linkedin_about", linkedin);
-        if (github) form.append("github_url", github);
-        if (role) form.append("role_preference", role);
-        if (location) form.append("location_preference", location);
-        if (remote) form.append("remote_preference", remote);
+      
+      // Step 1+2: Extract profile (Always use backend now)
+      const form = new FormData();
+      if (file) form.append("resume_pdf", file);
+      if (linkedin) form.append("linkedin_about", linkedin);
+      if (github) form.append("github_url", github);
+      if (role) form.append("role_preference", role);
+      if (location) form.append("location_preference", location);
+      if (remote) form.append("remote_preference", remote);
 
-        setCurrentStep(2);
-        const profileRes = await fetch(`${API}/extract-profile`, { method: "POST", body: form });
-        if (!profileRes.ok) throw new Error("Profile extraction failed");
-        profile = await profileRes.json();
-      } else {
-        // Links-only mode (for quick testing without PDF upload)
-        setCurrentStep(2);
-        profile = buildProfileFromLinks({ role, location, remote, github, linkedin, linkedinUrl });
-      }
+      setCurrentStep(2);
+      const profileRes = await fetch(`${API}/extract-profile`, { method: "POST", body: form });
+      if (!profileRes.ok) throw new Error("Profile extraction failed");
+      profile = await profileRes.json();
 
       // Step 3: Fetch jobs
       setCurrentStep(3);
@@ -219,8 +224,11 @@ export default function OnboardingPage() {
 
       // Store in localStorage and navigate
       localStorage.setItem("zg_profile", JSON.stringify(profile));
-      localStorage.setItem("zg_jobs", JSON.stringify(scoredJobs));
-      localStorage.setItem("zg_matched_jobs", JSON.stringify(matchedJobs));
+      if (resumeBase64) {
+        localStorage.setItem("zg_resume_base64", resumeBase64);
+      }
+      // Standardized to use ONE key: zg_matched_jobs
+      localStorage.setItem("zg_matched_jobs", JSON.stringify(scoredJobs.length > 0 ? scoredJobs : matchedJobs));
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";

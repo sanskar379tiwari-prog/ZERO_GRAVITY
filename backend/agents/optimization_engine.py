@@ -12,7 +12,7 @@ class OptimizationEngine:
     
     MAX_ITERATIONS = 2  # Keep LLM calls efficient
     
-    def __init__(self, client: genai.Client, model: str = "gemini-3.1-flash-lite"):
+    def __init__(self, client: genai.Client, model: str = "gemini-1.5-flash"):
         self.client = client
         self.model = model
     
@@ -99,60 +99,99 @@ class OptimizationEngine:
         else:
             instructions_prompt = ""
         
-        prompt = f"""You are an expert ATS resume optimizer. Tailor this resume for the specific job, focusing on matching keywords and proving relevant experience.
-
-CANDIDATE PROFILE:
-{json.dumps(profile, indent=2)}
-
-JOB:
-Title: {job.get('title', 'Software Role')}
-Company: {job.get('company', 'Company')}
-Description: {job.get('description', '')[:1500]}
-
-ORIGINAL RESUME:
-{resume_text[:2500]}{instructions_prompt}{feedback_prompt}
-
-IMPORTANT RULES:
-1. DO NOT fabricate skills or experience not in the original resume
-2. Highlight existing skills that match the job
-3. Use job keywords naturally in bullets
-4. Keep formatting simple (no special chars, plain ASCII)
-5. Make bullets specific and quantifiable where possible
-
-Return ONLY valid JSON (no markdown, no extra text):
-{{
-  "name": "Full Name",
-  "contact_line": "email | phone | location",
-  "summary": "2-3 sentence targeted summary",
-  "skills": ["skill1", "skill2", "skill3"],
-  "experience": [
-    {{
-      "title": "Job Title",
-      "company": "Company Name",
-      "duration": "Month Year - Month Year",
-      "bullets": ["achievement with metrics", "relevant responsibility"]
-    }}
-  ],
-  "education": [{{"degree": "Degree", "school": "University", "year": "Year"}}],
-  "projects": [{{"name": "Project", "description": "2 sentence description with keywords"}}],
-  "ats_keywords_injected": ["keyword1", "keyword2"]
-}}"""
+        prompt = f"""You are an expert ATS resume optimizer. Your task is to rewrite the candidate's resume to perfectly align with the job description while maintaining 100% honesty.
         
+        CANDIDATE PROFILE (Key Strengths):
+        {json.dumps(profile, indent=2)}
+        
+        TARGET JOB:
+        Title: {job.get('title', 'Software Role')}
+        Company: {job.get('company', 'Company')}
+        Description: {job.get('description', '')[:3000]}
+        
+        FULL ORIGINAL RESUME CONTENT:
+        {resume_text[:12000]}
+        
+        {instructions_prompt}
+        {feedback_prompt}
+        
+        INSTRUCTIONS:
+        1. REWRITE the professional summary to be high-impact and job-specific.
+        2. OPTIMIZE work experience from the original resume. DO NOT OMIT EXPERIENCE. Keep all relevant roles.
+        3. Include all education and certifications from the original resume.
+        4. Include all relevant projects.
+        5. Ensure the "skills" list is comprehensive (10-15 keywords).
+        6. Return ONLY valid JSON with this EXACT structure.
+        
+        REQUIRED JSON STRUCTURE:
+        {{
+          "name": "Full Name",
+          "contact_line": "email | phone | location",
+          "professional_summary": "2-3 targeted sentences",
+          "skills": ["Skill 1", "Skill 2"],
+          "experience": [
+            {{
+              "company": "Company Name",
+              "role": "Job Title",
+              "duration": "Dates",
+              "bullets": ["Bullet 1", "Bullet 2"]
+            }}
+          ],
+          "projects": [
+            {{
+              "title": "Project Name",
+              "description": "Project details"
+            }}
+          ],
+          "education": [
+            {{
+              "institution": "University Name",
+              "degree": "Degree Earned",
+              "year": "Graduation Year"
+            }}
+          ],
+          "ats_keywords_injected": ["keyword1", "keyword2"]
+        }}"""
+        
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+        )
+        raw = response.text.strip()
+        
+        # DEBUG LOGGING (Requirement: Step 1)
+        print("\n" + "="*50, flush=True)
+        print("RAW GEMINI RESPONSE (Resume Tailoring)", flush=True)
+        print("="*50, flush=True)
+        print(raw, flush=True)
+        print("="*50 + "\n", flush=True)
+
         try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-            )
-            raw = response.text.strip()
             sections = self._extract_json(raw)
             return self._normalize_sections(sections, profile, job)
         except json.JSONDecodeError as e:
             print(f"[OptimizationEngine] JSON decode error: {e}")
-            print(f"[OptimizationEngine] raw response: {raw}")
-            return self._fallback_sections(profile, job)
+            raw = self._retry_strict_json(prompt)
+            try:
+                sections = self._extract_json(raw)
+                return self._normalize_sections(sections, profile, job)
+            except Exception:
+                return self._fallback_sections(profile, job)
         except Exception as e:
             print(f"[OptimizationEngine] LLM error: {e}")
             return self._fallback_sections(profile, job)
+    
+    def _retry_strict_json(self, prompt: str) -> str:
+        strict_prompt = prompt + (
+            "\n\nIMPORTANT: Return only a bare JSON object with no explanation, no headings, and no markdown. "
+            "Use the exact keys name, contact_line, professional_summary, skills, experience, education, projects, ats_keywords_injected. "
+            "If a value is not available, use an empty string or empty list."
+        )
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=strict_prompt,
+        )
+        return response.text.strip()
     
     def _extract_json(self, raw: str) -> dict:
         """Extract JSON object from raw LLM text."""
@@ -171,44 +210,61 @@ Return ONLY valid JSON (no markdown, no extra text):
             return self._fallback_sections(profile, job)
 
         normalized = {
-            "name": str(sections.get("name", profile.get("name", "Candidate"))).strip(),
-            "contact_line": str(sections.get("contact_line", profile.get("location", ""))).strip(),
-            "summary": str(sections.get("summary", "")).strip(),
-            "skills": sections.get("skills") if isinstance(sections.get("skills"), list) else [],
+            "name": str(self._get_value(sections, ["name", "full_name"], profile.get("name", "Candidate"))).strip(),
+            "contact_line": str(self._get_value(sections, ["contact_line", "contact"], profile.get("location", ""))).strip(),
+            "professional_summary": str(self._get_value(sections, ["professional_summary", "summary", "overview"], "")).strip(),
+            "skills": self._get_list(sections, ["skills", "technical_skills"]),
             "experience": [],
             "education": [],
             "projects": [],
-            "ats_keywords_injected": sections.get("ats_keywords_injected") if isinstance(sections.get("ats_keywords_injected"), list) else [],
+            "ats_keywords_injected": self._get_list(sections, ["ats_keywords_injected", "keywords"]),
         }
 
-        for exp in sections.get("experience", []) if isinstance(sections.get("experience"), list) else []:
+        # Experience Mapping
+        for exp in self._get_list(sections, ["experience", "work_experience"]):
             if isinstance(exp, dict):
                 normalized["experience"].append({
-                    "title": str(exp.get("title", "")).strip(),
-                    "company": str(exp.get("company", "")).strip(),
-                    "duration": str(exp.get("duration", "")).strip(),
-                    "bullets": [str(b).strip() for b in exp.get("bullets", []) if b],
+                    "role": str(self._get_value(exp, ["role", "title", "position"], "")).strip(),
+                    "company": str(self._get_value(exp, ["company", "organization", "employer"], "")).strip(),
+                    "duration": str(self._get_value(exp, ["duration", "dates"], "")).strip(),
+                    "bullets": [str(b).strip() for b in self._get_list(exp, ["bullets", "highlights"]) if b],
                 })
 
-        for ed in sections.get("education", []) if isinstance(sections.get("education"), list) else []:
+        # Education Mapping
+        for ed in self._get_list(sections, ["education", "education_history"]):
             if isinstance(ed, dict):
                 normalized["education"].append({
-                    "degree": str(ed.get("degree", "")).strip(),
-                    "school": str(ed.get("school", "")).strip(),
-                    "year": str(ed.get("year", "")).strip(),
+                    "degree": str(self._get_value(ed, ["degree", "qualification"], "")).strip(),
+                    "institution": str(self._get_value(ed, ["institution", "school", "university"], "")).strip(),
+                    "year": str(self._get_value(ed, ["year", "graduation_year"], "")).strip(),
                 })
 
-        for proj in sections.get("projects", []) if isinstance(sections.get("projects"), list) else []:
+        # Projects Mapping
+        for proj in self._get_list(sections, ["projects", "project_experience"]):
             if isinstance(proj, dict):
                 normalized["projects"].append({
-                    "name": str(proj.get("name", "")).strip(),
-                    "description": str(proj.get("description", "")).strip(),
+                    "title": str(self._get_value(proj, ["title", "name", "project_name"], "")).strip(),
+                    "description": str(self._get_value(proj, ["description", "summary"], "")).strip(),
                 })
 
-        if not normalized["summary"]:
-            normalized["summary"] = f"Professional candidate interested in {job.get('title', 'this opportunity')} at {job.get('company', 'your company')}."
+        # Final Fallback check for critical sections
+        if not normalized["professional_summary"]:
+            normalized["professional_summary"] = f"Goal-oriented professional with experience in {', '.join(normalized['skills'][:3])}."
 
         return normalized
+
+    def _get_value(self, source: dict, keys: list, default=None):
+        for key in keys:
+            if key in source and source[key] is not None:
+                return source[key]
+        return default
+
+    def _get_list(self, source: dict, keys: list) -> list:
+        for key in keys:
+            value = source.get(key)
+            if isinstance(value, list):
+                return value
+        return []
 
     def _generate_feedback(self, quality: dict) -> str:
         """Generate feedback to guide next iteration."""

@@ -10,7 +10,7 @@ from usage import tracker
 
 load_dotenv()
 
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
+JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY", "")
 MOCK_PATH = Path(__file__).resolve().parents[2] / "mock_jobs.json"
 
 
@@ -25,7 +25,7 @@ def fetch(query: str = "software engineer", location: str = "", page: int = 1) -
         
     print(f"[Agent 2] Fetching jobs from JSearch: '{full_query}'")
     
-    if RAPIDAPI_KEY:
+    if JSEARCH_API_KEY:
         try:
             results = _jsearch_fetch(full_query, page)
             if results and len(results) > 0:
@@ -36,7 +36,7 @@ def fetch(query: str = "software engineer", location: str = "", page: int = 1) -
         except Exception as e:
             print(f"[Agent 2] JSearch API failed: {e}. Using mock jobs.")
     
-    print("[Agent 2] No RapidAPI key or API returned 0 results. Using mock data.")
+    print("[Agent 2] No JSearch API key or API returned 0 results. Using mock data.")
     return _mock()
 
 
@@ -52,12 +52,12 @@ def _jsearch_fetch(query: str, page: int) -> list:
     }
 
     headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Key": JSEARCH_API_KEY,
         "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
     }
 
-    if not RAPIDAPI_KEY:
-        print("[Agent 2] WARNING: RAPIDAPI_KEY is missing from .env")
+    if not JSEARCH_API_KEY:
+        print("[Agent 2] WARNING: JSEARCH_API_KEY is missing from .env")
 
     response = requests.get(url, headers=headers, params=querystring, timeout=30)
     response.raise_for_status()
