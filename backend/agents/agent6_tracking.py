@@ -62,6 +62,8 @@ def create_application(
         "interview_id": None,
         "notes": "",
     }
+    _applications[app_id] = record
+    return record
 
     if _supabase:
         try:

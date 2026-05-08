@@ -126,6 +126,12 @@ export default function DashboardPage() {
           >
             Applications
           </Link>
+          <button
+            onClick={() => { localStorage.removeItem("zg_matched_jobs"); window.location.reload(); }}
+            className="rounded-full border border-slate-500/40 bg-slate-900/30 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800/80"
+          >
+            Refresh Search
+          </button>
           <Link
             href="/"
             className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-white"
@@ -148,12 +154,18 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-xl font-semibold">{job.title}</h2>
               <p className="text-sm text-slate-300/70">
-                {job.company} • {job.location}
+                {job.company} • {job.location} • <span className="text-cyan-400/90">{job.source}</span>
               </p>
             </div>
-            <p className="rounded-full bg-cyan-500/15 px-3 py-1 text-sm font-medium text-cyan-200">
-              Match Score: {job.match_score}%
-            </p>
+            <div className="text-right">
+              <p className="rounded-full bg-cyan-500/15 px-3 py-1 text-sm font-medium text-cyan-200">
+                Match Score: {job.match_score}%
+              </p>
+              <div className="mt-1 flex justify-end gap-2 text-[10px] uppercase tracking-wider text-slate-400">
+                <span>Semantic: {Math.round((job.semantic_score || 0) * 100)}%</span>
+                <span>ATS: {Math.round((job.ats_score || 0) * 100)}%</span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-slate-900">
