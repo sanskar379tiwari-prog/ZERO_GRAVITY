@@ -21,7 +21,6 @@ const STAT_COLORS: Record<ApplicationStatus, string> = {
 function ApplicationRow({ 
   app, 
   index, 
-  isLast, 
   updatingId, 
   onStatusChange 
 }: { 
@@ -31,81 +30,50 @@ function ApplicationRow({
   updatingId: string,
   onStatusChange: (id: string, s: ApplicationStatus) => void 
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const cfg = STATUS_CONFIG[app.status];
 
   return (
-    <>
-      <tr 
-        id={`app-row-${app.app_id}`}
-        className="transition-colors border-b border-[#323232]/10 last:border-0 hover:bg-[#fcfcfc]"
-      >
-        <td className="px-6 py-5">
-          <span className="font-black text-[#323232]">{app.job_title}</span>
-        </td>
-        <td className="px-6 py-5 text-[#666] font-bold">{app.company}</td>
-        <td className="px-6 py-5 text-[#999] font-bold">
-          {new Date(app.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </td>
-        <td className="px-6 py-5">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[10px] font-black uppercase border-2 ${cfg.border} ${cfg.color} ${cfg.bg}`}>
-            {cfg.icon} {cfg.label}
-          </span>
-        </td>
-        <td className="px-6 py-5 flex items-center gap-2">
-          <select
-            value={app.status}
-            disabled={updatingId === app.app_id}
-            onChange={(e) => onStatusChange(app.app_id, e.target.value as ApplicationStatus)}
-            className="neo-select !text-[10px] !py-1 !px-2"
-          >
-            {(["Applied", "Pending", "Interview", "Rejected"] as ApplicationStatus[]).map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          
-          {(app.outreach_draft || app.tailored_resume) && (
-            <button 
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-[10px] uppercase font-black text-[#2d8cf0] hover:underline"
-            >
-              {isExpanded ? "Hide" : "View"}
-            </button>
-          )}
-        </td>
-      </tr>
-      {isExpanded && (
-        <tr className="bg-[#fcfcfc] border-b border-[#323232]/10">
-          <td colSpan={5} className="px-8 py-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {app.outreach_draft && (
-                <div className="space-y-3">
-                  <h4 className="text-[10px] font-black uppercase text-[#999] tracking-widest">Outreach Draft</h4>
-                  <div className="p-4 rounded-[5px] bg-white border-2 border-[#323232] shadow-[3px_3px_#323232]">
-                    <p className="text-xs font-black text-[#323232] mb-1">Subject: {app.outreach_draft.subject}</p>
-                    <p className="text-sm text-[#666] font-bold whitespace-pre-wrap">{app.outreach_draft.email_body}</p>
-                  </div>
-                </div>
-              )}
-              {app.tailored_resume && (
-                <div className="space-y-3">
-                  <h4 className="text-[10px] font-black uppercase text-[#999] tracking-widest">Tailored Resume Assets</h4>
-                  <div className="p-4 rounded-[5px] bg-white border-2 border-[#323232] shadow-[3px_3px_#323232]">
-                    <p className="text-sm text-[#666] italic font-bold mb-3">Resume optimized for this specific role.</p>
-                    <p className="text-[10px] text-[#323232] font-black uppercase tracking-widest mb-2">Injected Keywords:</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(app.tailored_resume.ats_keywords_injected || []).slice(0, 10).map((kw: string) => (
-                        <span key={kw} className="text-[9px] px-2 py-0.5 rounded-[3px] bg-[#f0f0f0] text-[#323232] border border-[#323232] font-black">{kw}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+    <tr 
+      id={`app-row-${app.app_id}`}
+      className="transition-colors border-b border-[#323232]/10 last:border-0 hover:bg-[#fcfcfc]"
+    >
+      <td className="px-6 py-5">
+        <Link 
+          href={`/applications/${app.app_id}`}
+          className="font-black text-[#323232] no-underline hover:underline hover:text-[#2d8cf0]"
+        >
+          {app.job_title}
+        </Link>
+      </td>
+      <td className="px-6 py-5 text-[#666] font-bold">{app.company}</td>
+      <td className="px-6 py-5 text-[#999] font-bold">
+        {new Date(app.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+      </td>
+      <td className="px-6 py-5">
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[10px] font-black uppercase border-2 ${cfg.border} ${cfg.color} ${cfg.bg}`}>
+          {cfg.icon} {cfg.label}
+        </span>
+      </td>
+      <td className="px-6 py-5 flex items-center gap-3">
+        <select
+          value={app.status}
+          disabled={updatingId === app.app_id}
+          onChange={(e) => onStatusChange(app.app_id, e.target.value as ApplicationStatus)}
+          className="neo-select !text-[10px] !py-1 !px-2"
+        >
+          {(["Applied", "Pending", "Interview", "Rejected"] as ApplicationStatus[]).map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        
+        <Link 
+          href={`/applications/${app.app_id}`}
+          className="text-[10px] uppercase font-black text-[#2d8cf0] no-underline hover:underline whitespace-nowrap"
+        >
+          Open Assets →
+        </Link>
+      </td>
+    </tr>
   );
 }
 

@@ -104,6 +104,19 @@ export async function updateApplicationStatus(
   return normalizeApplication(data);
 }
 
+export async function getApplication(appId: string): Promise<ApplicationRecord> {
+  const response = await fetch(`${API_BASE}/applications/${appId}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch application");
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+  return normalizeApplication(data);
+}
+
 function normalizeApplication(raw: Record<string, unknown>): ApplicationRecord {
   const status = (raw.status as ApplicationStatus) || "Applied";
 
