@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { UiverseInput } from "@/components/UiverseInput";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -315,46 +316,49 @@ export default function OnboardingPage() {
             <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} id="resume-file-input" />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <input
-              id="role-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="Target role"
+          <div className="flex flex-col gap-4">
+            <UiverseInput
+              placeholder="Target role (e.g. Frontend Engineer)"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={setRole}
+              buttonText="Role"
+              className="max-w-full"
             />
-            <input
-              id="location-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="Preferred location"
+            <UiverseInput
+              placeholder="Preferred location (e.g. Remote, NY)"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
+              buttonText="Location"
+              className="max-w-full"
             />
-            <input
-              id="github-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="GitHub URL (optional)"
-              value={github}
-              onChange={(e) => setGithub(e.target.value)}
-            />
-            <input
-              id="linkedin-url-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="LinkedIn Profile URL (optional)"
-              value={linkedinUrl}
-              onChange={(e) => setLinkedinUrl(e.target.value)}
-            />
-            <select
-              id="remote-select"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              value={remote}
-              onChange={(e) => setRemote(e.target.value)}
-            >
-              <option value="flexible">Flexible</option>
-              <option value="remote">Remote Only</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="onsite">On-site</option>
-            </select>
+            
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input
+                id="github-input"
+                className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                placeholder="GitHub URL (optional)"
+                value={github}
+                onChange={(e) => setGithub(e.target.value)}
+              />
+              <input
+                id="linkedin-url-input"
+                className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                placeholder="LinkedIn Profile URL (optional)"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+              />
+              <select
+                id="remote-select"
+                className="col-span-full rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                value={remote}
+                onChange={(e) => setRemote(e.target.value)}
+              >
+                <option value="flexible">Flexible Remote Preference</option>
+                <option value="remote">Remote Only</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="onsite">On-site</option>
+              </select>
+            </div>
           </div>
 
           <textarea

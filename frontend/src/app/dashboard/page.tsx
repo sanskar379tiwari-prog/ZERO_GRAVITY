@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createApplication, draftOutreachEmail, fetchMatchedJobs } from "@/lib/api";
 import { JobMatch } from "@/types/job";
+import { UiverseInput } from "@/components/UiverseInput";
 
 interface Profile {
   name?: string;
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const [toast, setToast] = useState("");
   const [draftForJobId, setDraftForJobId] = useState("");
   const [draftEmail, setDraftEmail] = useState<{ subject: string; email_body: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadJobs() {
@@ -34,20 +36,16 @@ export default function DashboardPage() {
         const profileData = JSON.parse(rawProfile) as Profile;
         setProfile(profileData);
         
-        // Try to get already scored jobs from localStorage first (from the onboarding pipeline)
         const savedJobs = localStorage.getItem("zg_matched_jobs");
         if (savedJobs) {
           const parsedJobs = JSON.parse(savedJobs);
           if (parsedJobs && parsedJobs.length > 0) {
-            console.log("Using cached jobs from localStorage");
             setJobs(parsedJobs);
             setLoading(false);
             return;
           }
         }
 
-        // Fallback to fetching if no saved jobs or empty
-        console.log("Fetching fresh jobs from API");
         const data = await fetchMatchedJobs(profileData);
         setJobs(data);
         localStorage.setItem("zg_matched_jobs", JSON.stringify(data));
@@ -58,7 +56,6 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-
     loadJobs();
   }, []);
 
@@ -67,6 +64,21 @@ export default function DashboardPage() {
     const timer = setTimeout(() => setToast(""), 2200);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || !profile) return;
+    setLoading(true);
+    try {
+      const data = await fetchMatchedJobs(profile, searchQuery);
+      setJobs(data);
+      localStorage.setItem("zg_matched_jobs", JSON.stringify(data));
+    } catch (err) {
+      console.error(err);
+      setToast("Search failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   async function handleTrack(job: JobMatch) {
     try {
@@ -114,10 +126,21 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[#041423] p-6 text-slate-100">
-      <div className="mx-auto mb-6 flex max-w-6xl items-center justify-between">
-        <div>
+      <div className="mx-auto mb-6 flex max-w-6xl flex-wrap items-center justify-between gap-6">
+        <div className="flex-1 min-w-[300px]">
           <h1 className="text-3xl font-semibold">Matched Jobs</h1>
           <p className="mt-1 text-sm text-slate-300/80">Real-time backend scoring, outreach, and tracking.</p>
+          
+          <div className="mt-4">
+            <UiverseInput 
+              placeholder="Search for roles (e.g. React Developer)..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              buttonText="Search"
+              onAction={handleSearch}
+              className="max-w-md"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link
