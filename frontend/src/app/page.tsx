@@ -6,6 +6,7 @@ import { TerminalCard } from "@/components/TerminalCard";
 import { Loader } from "@/components/Loader";
 import { StartButton } from "@/components/StartButton";
 import { TrueFocus } from "@/components/TrueFocus";
+import { FaultyTerminal } from "@/components/FaultyTerminal";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -268,8 +269,19 @@ export default function OnboardingPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#041423] px-4 py-16">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,180,220,0.18),rgba(4,20,35,0.95)_48%)]" />
-      <div className="pointer-events-none absolute inset-0">
+      <div className="absolute inset-0 z-0 opacity-40">
+        <FaultyTerminal 
+          curvature={0.15}
+          glitchAmount={1.1}
+          scanlineIntensity={0.25}
+          tint="#22d3ee"
+          brightness={0.6}
+        />
+      </div>
+      
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(4,20,35,0.2),rgba(4,20,35,0.95)_70%)]" />
+      
+      <div className="pointer-events-none absolute inset-0 z-10">
         {["top-20 left-[12%]", "top-40 left-[72%]", "top-[62%] left-[14%]", "top-[70%] left-[84%]"].map((star) => (
           <span
             key={star}
