@@ -6,7 +6,7 @@
 
 ## 🌐 Live Demo Available — For Judges & Reviewers
 
-**Zero Gravity is fully deployed and production-ready.** We **strongly encourage judges and reviewers** to visit and experience the orchestration pipeline in real time:
+**Zero Gravity is fully deployed website.** We **strongly encourage judges and reviewers** to visit and experience the orchestration pipeline in real time:
 
 ### 🔗 **[⭐ Try Zero Gravity Now ⭐](https://zero-gravity-eight.vercel.app/)**
 
