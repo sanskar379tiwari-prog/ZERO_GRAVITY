@@ -4,15 +4,14 @@ for a given candidate profile and target job using Gemini.
 """
 import json
 import os
+import time
 from google import genai
 from dotenv import load_dotenv
 from usage import tracker
 
-def get_client():
-    load_dotenv(override=True)
-    return genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-
-MODEL = "gemini-3.1-flash-lite"
+load_dotenv(override=True)
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+MODEL = "gemini-1.5-flash"
 
 PROMPT = """You are an expert career coach and copywriter.
 Write a personalized cold-outreach email from a candidate to a recruiter/hiring manager.
@@ -41,7 +40,7 @@ Rules:
 - Return ONLY raw JSON. No markdown. No explanation."""
 
 
-def draft(profile: dict, job: dict) -> dict:
+def generate(profile: dict, job: dict) -> dict:
     """Generate outreach content using Gemini."""
     prompt = PROMPT.format(
         profile=json.dumps(profile, indent=2),
@@ -50,12 +49,11 @@ def draft(profile: dict, job: dict) -> dict:
         description=job.get("description", "")[:1200],
     )
 
-    model = MODEL
     for attempt in range(3):
         try:
-            tracker.log_call("Gemini (3.1 Flash-Lite)")
+            tracker.log_call("Gemini (1.5 Flash)")
             response = _client.models.generate_content(
-                model=model,
+                model=MODEL,
                 contents=prompt,
             )
             raw = response.text.strip()
@@ -71,15 +69,14 @@ def draft(profile: dict, job: dict) -> dict:
             return result
         except Exception as e:
             if attempt < 2:
-                import time
                 wait_time = (attempt + 1) * 2
                 print(f"[Agent 5] Gemini Busy. Retrying in {wait_time}s... ({attempt+1}/3)")
                 time.sleep(wait_time)
             else:
                 print(f"[Agent 5] Outreach failed: {e}")
-                raise e
+                return _fallback(profile, job)
 
-    return {} # Should not be reached due to raise
+    return _fallback(profile, job)
 
 
 def _fallback(profile: dict, job: dict) -> dict:
