@@ -131,12 +131,15 @@ export default function ApplicationsPage() {
                 {visible.map((app, i) => {
                   const cfg = STATUS_CONFIG[app.status];
                   const rowKey = app.app_id || `${app.job_id}-${app.company}-${i}`;
+                  const [isExpanded, setIsExpanded] = useState(false);
+
                   return (
+                    <>
                     <tr key={rowKey}
                       id={`app-row-${app.app_id}`}
                       className="transition-colors duration-150"
                       style={{
-                        borderBottom: i < visible.length - 1 ? "1px solid rgba(148,163,184,0.15)" : "none",
+                        borderBottom: !isExpanded && i < visible.length - 1 ? "1px solid rgba(148,163,184,0.15)" : "none",
                         animationDelay: `${i * 0.05}s`,
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = "rgba(34,211,238,0.05)")}
@@ -151,7 +154,7 @@ export default function ApplicationsPage() {
                       <td className="px-4 py-4">
                         <span className={`badge ${cfg.cls}`}>{cfg.icon} {cfg.label}</span>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 flex items-center gap-2">
                         <select
                           value={app.status}
                           disabled={updatingId === app.app_id}
@@ -162,8 +165,49 @@ export default function ApplicationsPage() {
                             <option key={s} value={s}>{s}</option>
                           ))}
                         </select>
+                        
+                        {(app.outreach_draft || app.tailored_resume) && (
+                          <button 
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="text-[10px] uppercase font-bold text-cyan-400 hover:text-cyan-300 transition"
+                          >
+                            {isExpanded ? "Hide" : "View"}
+                          </button>
+                        )}
                       </td>
                     </tr>
+                    {isExpanded && (
+                      <tr className="bg-slate-900/30 border-b border-slate-700/40">
+                        <td colSpan={5} className="px-6 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up">
+                            {app.outreach_draft && (
+                              <div className="space-y-2">
+                                <h4 className="text-xs font-bold uppercase text-slate-500 tracking-widest">Outreach Draft</h4>
+                                <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
+                                  <p className="text-xs font-semibold text-slate-400 mb-1">Subject: {app.outreach_draft.subject}</p>
+                                  <p className="text-sm text-slate-300 whitespace-pre-wrap line-clamp-6">{app.outreach_draft.email_body}</p>
+                                </div>
+                              </div>
+                            )}
+                            {app.tailored_resume && (
+                              <div className="space-y-2">
+                                <h4 className="text-xs font-bold uppercase text-slate-500 tracking-widest">Tailored Resume</h4>
+                                <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
+                                  <p className="text-sm text-slate-300 italic mb-2">Resume has been tailored for this role.</p>
+                                  <p className="text-xs text-slate-400 font-semibold mb-1">Injected Keywords:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {(app.tailored_resume.ats_keywords_injected || []).slice(0, 8).map((kw: string) => (
+                                      <span key={kw} className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-200 border border-cyan-500/20">{kw}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </>
                   );
                 })}
               </tbody>

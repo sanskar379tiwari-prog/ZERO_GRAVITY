@@ -64,6 +64,8 @@ class ApplicationCreate(BaseModel):
     company: str
     profile_name: str = "Candidate"
     status: str = "Applied"
+    outreach_draft: Optional[dict] = None
+    tailored_resume: Optional[dict] = None
 
 # ---------------------------------------------------------------------------
 # App setup

@@ -53,6 +53,8 @@ export async function createApplication(payload: {
   company: string;
   profile_name?: string;
   status?: ApplicationStatus;
+  outreach_draft?: { subject: string; email_body: string; short_cover?: string };
+  tailored_resume?: any;
 }): Promise<ApplicationRecord> {
   const response = await fetch(`${API_BASE}/applications`, {
     method: "POST",
@@ -111,5 +113,7 @@ function normalizeApplication(raw: Record<string, unknown>): ApplicationRecord {
     profile_name: String(raw.profile_name ?? "Candidate"),
     status,
     created_at: String(raw.applied_at ?? raw.created_at ?? new Date().toISOString()),
+    outreach_draft: raw.outreach_draft as any,
+    tailored_resume: raw.tailored_resume as any,
   };
 }

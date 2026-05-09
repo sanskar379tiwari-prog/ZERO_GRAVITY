@@ -44,6 +44,8 @@ def create_application(
     company: str,
     profile_name: str,
     status: str = "Applied",
+    outreach_draft: Optional[dict] = None,
+    tailored_resume: Optional[dict] = None,
 ) -> dict:
     """Create and store a new application record."""
     app_id = f"app-{uuid.uuid4().hex[:8]}"
@@ -57,13 +59,13 @@ def create_application(
         "company": company,
         "profile_name": profile_name,
         "status": validated_status,
+        "outreach_draft": outreach_draft,
+        "tailored_resume": tailored_resume,
         "created_at": now,
         "updated_at": now,
         "interview_id": None,
         "notes": "",
     }
-    _applications[app_id] = record
-    return record
 
     if _supabase:
         try:
