@@ -64,6 +64,8 @@ class ApplicationCreate(BaseModel):
     company: str
     profile_name: str = "Candidate"
     status: str = "Applied"
+    outreach_draft: Optional[dict] = None
+    tailored_resume: Optional[dict] = None
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -163,7 +165,8 @@ async def dashboard_match(req: MatchRequest):
             "semantic_score": float(job.get("semantic_score", 0.0)),
             "ats_score": float(job.get("ats_score", 0.0)),
             "reasoning": job.get("reasoning", []),
-            "skills_overlap": job.get("skills_overlap", []), # Filled by frontend or scoring
+            "skills_overlap": job.get("skills_overlap", []),
+            "matched_skills": job.get("skills_overlap", []),
             "description": str(job.get("description", "")),
             "url": str(job.get("url", "")),
             "remote": bool(job.get("remote", False)),
@@ -174,6 +177,13 @@ async def dashboard_match(req: MatchRequest):
         })
         
     return JSONResponse(content=final_matches)
+
+@app.get("/jobs", tags=["agent-2"])
+def list_jobs(query: str = "software engineer", location: str = "", remote: str = ""):
+    jobs = agent2_jobs.fetch_batch([query], location=location)
+    if remote.lower() == "true":
+        jobs = [j for j in jobs if j.get("remote")]
+    return jobs
 
 @app.post("/tailor-resume", tags=["agent-4"])
 async def tailor_resume(req: TailorRequest):

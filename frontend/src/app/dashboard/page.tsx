@@ -84,12 +84,25 @@ export default function DashboardPage() {
   async function handleTrack(job: JobMatch) {
     try {
       setBusyJobId(job.job_id);
+      
+      // Get the draft if it matches the current job
+      const currentDraft = (draftForJobId === job.job_id) ? draftEmail : null;
+      
+      // Get tailored resume from localStorage if it exists
+      let tailoredResume = null;
+      const rawResume = localStorage.getItem(`zg_tailored_resume_${job.job_id}`);
+      if (rawResume) {
+        try { tailoredResume = JSON.parse(rawResume); } catch(e) {}
+      }
+
       await createApplication({
         job_id: job.job_id,
         job_title: job.title,
         company: job.company,
         profile_name: String(profile?.name ?? "Candidate"),
         status: "Applied",
+        outreach_draft: currentDraft ? { subject: currentDraft.subject, email_body: currentDraft.email_body } : undefined,
+        tailored_resume: tailoredResume || undefined,
       });
       setToast("Application added to tracker.");
     } catch (err) {

@@ -8,4 +8,6 @@ export interface ApplicationRecord {
   profile_name: string;
   status: ApplicationStatus;
   created_at: string;
+  outreach_draft?: { subject: string; email_body: string; short_cover?: string };
+  tailored_resume?: any;
 }

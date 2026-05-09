@@ -102,11 +102,14 @@ export default function ResumeComparePage({ params }: { params: Promise<{ jobId:
       if (!res.ok) throw new Error(`Backend error: ${res.status}`);
       const data: TailoredResult = await res.json();
       setResult(data);
+      localStorage.setItem(`zg_tailored_resume_${jobId}`, JSON.stringify(data.tailored_sections));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       setError(`Tailoring failed: ${msg}`);
       // Show mock result for demo reliability
-      setResult(getMockResult(profile, job));
+      const mock = getMockResult(profile, job);
+      setResult(mock);
+      localStorage.setItem(`zg_tailored_resume_${jobId}`, JSON.stringify(mock.tailored_sections));
     } finally {
       setLoading(false);
     }

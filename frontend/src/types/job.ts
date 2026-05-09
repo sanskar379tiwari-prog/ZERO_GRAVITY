@@ -8,6 +8,7 @@ export interface JobMatch {
   ats_score?: number;
   reasoning: string[];
   skills_overlap?: string[];
+  matched_skills?: string[];
   description?: string;
   url?: string;
   remote?: boolean;

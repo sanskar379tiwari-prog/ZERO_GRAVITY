@@ -12,7 +12,7 @@ from usage import tracker
 
 load_dotenv(override=True)
 
-JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY", "")
+JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY") or os.getenv("RAPIDAPI_KEY") or ""
 MOCK_PATH = Path(__file__).resolve().parents[2] / "mock_jobs.json"
 
 def fetch_batch(queries: list, location: str = "", limit: int = 50) -> list:
