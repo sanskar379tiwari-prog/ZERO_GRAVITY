@@ -787,3 +787,109 @@ body {
   from, 31% { transform: scale(1, 0); }
   56%, to { transform: scale(1, 1); }
 }
+
+/* From Uiverse.io by SSpisso - Adapted for Zero Gravity Onboarding */
+.onboarding-card {
+  width: 100%;
+  max-width: 500px;
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 
+    0px 100px 80px rgba(0, 0, 0, 0.2),
+    0px 40px 30px rgba(0, 0, 0, 0.1),
+    0px 10px 15px rgba(0, 0, 0, 0.05);
+  margin: 0 auto;
+}
+
+.onboarding-title {
+  width: 100%;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+
+.onboarding-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.onboarding-step {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-step label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.onboarding-step p {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background-color: rgba(108, 99, 255, 0.08);
+  border-top: 1px solid rgba(108, 99, 255, 0.15);
+}
+
+.onboarding-price {
+  font-size: 24px;
+  color: white;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-price span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-primary);
+}
+
+.onboarding-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 44px;
+  background: var(--accent-primary);
+  border-radius: 12px;
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.15, 0.83, 0.66, 1);
+  box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.onboarding-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 8px 25px var(--accent-glow);
+}
+
+.onboarding-btn:active {
+  transform: scale(0.95);
+}

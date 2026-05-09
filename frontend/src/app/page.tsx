@@ -291,67 +291,78 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        <div className="mx-auto max-w-2xl space-y-4">
-          <div
-            id="resume-drop-zone"
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-            className="cursor-pointer rounded-xl border border-dashed p-6 text-center transition-all"
-            style={{
-              borderColor: dragging || file ? "rgba(125,211,252,0.9)" : "rgba(148,163,184,0.4)",
-              background: dragging ? "rgba(14,116,144,0.25)" : "rgba(15,23,42,0.5)",
-            }}
-          >
-            <p className="text-base font-medium text-slate-100">
-              {file ? `Selected: ${file.name}` : "Drop resume PDF or click to upload (optional)"}
-            </p>
-            {file && (
-              <p className="mt-1 text-sm text-slate-300/75">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
-            )}
-            <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} id="resume-file-input" />
+        <div className="onboarding-card animate-slide-up">
+          <div className="onboarding-title">
+            <span>Configuration & Orchestration</span>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <UiverseInput
-              placeholder="Target role (e.g. Frontend Engineer)"
-              value={role}
-              onChange={setRole}
-              buttonText="Role"
-              className="max-w-full"
-            />
-            <UiverseInput
-              placeholder="Preferred location (e.g. Remote, NY)"
-              value={location}
-              onChange={setLocation}
-              buttonText="Location"
-              className="max-w-full"
-            />
-            
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <input
-                id="github-input"
-                className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-                placeholder="GitHub URL (optional)"
-                value={github}
-                onChange={(e) => setGithub(e.target.value)}
-              />
-              <input
-                id="linkedin-url-input"
-                className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-                placeholder="LinkedIn Profile URL (optional)"
-                value={linkedinUrl}
-                onChange={(e) => setLinkedinUrl(e.target.value)}
-              />
+          <div className="onboarding-content">
+            {/* Step 1: Document Parsing */}
+            <div className="onboarding-step">
+              <label>Resume Source</label>
+              <div
+                id="resume-drop-zone"
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+                className="cursor-pointer rounded-xl border border-dashed p-4 text-center transition-all bg-white/5 border-white/10 hover:border-cyan-400/50"
+              >
+                <p className="text-sm font-medium text-slate-100">
+                  {file ? `📄 ${file.name}` : "Drop resume PDF or click to upload"}
+                </p>
+                <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} />
+              </div>
+            </div>
+
+            {/* Step 2: Role & Location */}
+            <div className="onboarding-step">
+              <label>Target Parameters</label>
+              <div className="space-y-3">
+                <UiverseInput
+                  placeholder="Target role (e.g. Frontend Engineer)"
+                  value={role}
+                  onChange={setRole}
+                  buttonText="Role"
+                  className="!max-w-full !h-10"
+                />
+                <UiverseInput
+                  placeholder="Preferred location (e.g. Remote, NY)"
+                  value={location}
+                  onChange={setLocation}
+                  buttonText="Loc"
+                  className="!max-w-full !h-10"
+                />
+              </div>
+            </div>
+
+            {/* Step 3: Social Connectivity */}
+            <div className="onboarding-step">
+              <label>Social Intelligence</label>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input
+                  id="github-input"
+                  className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                  placeholder="GitHub URL"
+                  value={github}
+                  onChange={(e) => setGithub(e.target.value)}
+                />
+                <input
+                  id="linkedin-url-input"
+                  className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                  placeholder="LinkedIn URL"
+                  value={linkedinUrl}
+                  onChange={(e) => setLinkedinUrl(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Step 4: Work Style */}
+            <div className="onboarding-step">
+              <label>Work Style Preference</label>
               <select
                 id="remote-select"
-                className="col-span-full rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                className="w-full rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
                 value={remote}
                 onChange={(e) => setRemote(e.target.value)}
               >
@@ -361,109 +372,79 @@ export default function OnboardingPage() {
                 <option value="onsite">On-site</option>
               </select>
             </div>
-          </div>
 
-          <textarea
-            id="linkedin-input"
-            className="w-full resize-none rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-            rows={3}
-            placeholder="LinkedIn about text (optional)"
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-          />
+            <textarea
+              id="linkedin-input"
+              className="w-full resize-none rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              rows={2}
+              placeholder="Paste LinkedIn About or hiring notes here..."
+              value={linkedin}
+              onChange={(e) => setLinkedin(e.target.value)}
+            />
 
-          <TerminalCard title="AI Extraction Console" className="mt-8">
-            {!preview.hasAnyInput ? (
-              <p className="text-center text-sm text-slate-300/75">
-                Waiting for input... Add GitHub/LinkedIn or upload a resume to see the AI analyze your profile in real-time.
-              </p>
-            ) : (
-              <div className="space-y-4 text-sm">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                    <p className="text-xs uppercase text-cyan-400 mb-1">Target Role</p>
-                    <p className="text-slate-100 font-medium">{preview.role}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                    <p className="text-xs uppercase text-cyan-400 mb-1">Location</p>
-                    <p className="text-slate-100 font-medium">{preview.location}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                    <p className="text-xs uppercase text-cyan-400 mb-1">Remote Preference</p>
-                    <p className="text-slate-100 font-medium">{preview.remotePreference}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                    <p className="text-xs uppercase text-cyan-400 mb-1">GitHub Status</p>
-                    <p className="text-slate-100 font-medium">{preview.githubUsername || "Scanning..."}</p>
-                  </div>
-                </div>
-
-                {preview.inferredSkills.length > 0 && (
-                  <div className="animate-fade-in">
-                    <p className="mb-2 text-xs uppercase tracking-wider text-slate-400">Inferred Technical Stack</p>
-                    <div className="flex flex-wrap gap-2">
-                      {preview.inferredSkills.map((skill) => (
-                        <span key={skill} className="rounded-md bg-cyan-500/20 border border-cyan-500/30 px-3 py-1 text-xs text-cyan-100">
-                          {skill}
-                        </span>
-                      ))}
+            <TerminalCard title="AI Extraction Console" className="!m-0 !max-w-full">
+              {!preview.hasAnyInput ? (
+                <p className="text-center text-xs text-slate-400">
+                  Waiting for input... Use the form above to provide details for AI analysis.
+                </p>
+              ) : (
+                <div className="space-y-3 text-[11px]">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/5 p-1.5 rounded border border-white/5">
+                      <span className="text-cyan-400 uppercase">Role:</span> {preview.role}
+                    </div>
+                    <div className="bg-white/5 p-1.5 rounded border border-white/5">
+                      <span className="text-cyan-400 uppercase">Loc:</span> {preview.location}
                     </div>
                   </div>
-                )}
-
-                <div className="mt-4 flex items-center gap-3">
+                  {preview.inferredSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {preview.inferredSkills.map((s) => (
+                        <span key={s} className="px-1.5 py-0.5 bg-cyan-500/10 text-cyan-200 rounded border border-cyan-500/20">{s}</span>
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={collectFromLinks}
                     disabled={collectLoading}
-                    className="Subscribe-btn !w-40 !h-10 text-xs"
+                    className="text-[10px] text-cyan-300 hover:text-cyan-100 underline decoration-cyan-500/50"
                   >
-                    <span>{collectLoading ? "Scanning..." : "Deep Profile Scan"}</span>
+                    {collectLoading ? "Scanning..." : "Re-scan Social Profiles"}
                   </button>
-                  {collectError && <span className="text-xs text-red-400 animate-pulse">{collectError}</span>}
                 </div>
-              </div>
-            )}
-          </TerminalCard>
+              )}
+            </TerminalCard>
+          </div>
 
-          {error && (
-            <div className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {error}
+          <div className="onboarding-footer">
+            <div className="onboarding-price">
+              ⚡ <span>{loading ? "Processing" : "Ready"}</span>
             </div>
-          )}
-
-          {loading && (
-            <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-8 shadow-2xl">
-              <Loader message={STEPS[currentStep - 1]?.label || "Initializing Orchestrator..."} />
-              <div className="mt-4 flex justify-center gap-3">
-                {STEPS.map((step) => (
-                  <div 
-                    key={step.id} 
-                    className={`h-1.5 w-12 rounded-full transition-all duration-500 ${currentStep >= step.id ? "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.6)]" : "bg-slate-700"}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap justify-center gap-3 pt-1">
             <button
               id="analyze-btn"
               onClick={runPipeline}
               disabled={loading}
-              className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-6 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-60"
+              className="onboarding-btn"
             >
-              {loading ? "Processing..." : "Start Matching"}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-white"
-            >
-              Open Dashboard
+              {loading ? "Matching..." : "Start Discovery"}
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="mx-auto mt-4 max-w-md rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300 text-center">
+            {error}
+          </div>
+        )}
+
+        {loading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <div className="max-w-md w-full px-6">
+              <Loader message={STEPS[currentStep - 1]?.label || "Initializing Orchestrator..."} />
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
