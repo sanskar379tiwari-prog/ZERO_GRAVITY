@@ -292,7 +292,9 @@ export default function OnboardingPage() {
 
       <div className="relative mx-auto max-w-4xl rounded-2xl border border-cyan-300/20 bg-[#061a2c]/80 p-8 backdrop-blur-sm md:p-12">
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="mb-3 text-sm tracking-wide text-cyan-200/80">Zero Gravity AI</p>
+          <p className="logo-text mb-4 text-xl md:text-2xl opacity-90 animate-fade-in">
+            Zero Gravity AI
+          </p>
           <TrueFocus 
             sentence="Find Matches. Score, Tailor, Apply Faster."
             blurAmount={4}
