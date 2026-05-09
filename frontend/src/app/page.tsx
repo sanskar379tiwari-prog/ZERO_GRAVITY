@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { UiverseInput } from "@/components/UiverseInput";
 import { TerminalCard } from "@/components/TerminalCard";
 import { Loader } from "@/components/Loader";
+import { StartButton } from "@/components/StartButton";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -421,14 +422,11 @@ export default function OnboardingPage() {
             <div className="onboarding-price">
               ⚡ <span>{loading ? "Processing" : "Ready"}</span>
             </div>
-            <button
-              id="analyze-btn"
+            <StartButton
               onClick={runPipeline}
-              disabled={loading}
-              className="onboarding-btn"
-            >
-              {loading ? "Matching..." : "Start Discovery"}
-            </button>
+              loading={loading}
+              text="Start Discovery"
+            />
           </div>
         </div>
 

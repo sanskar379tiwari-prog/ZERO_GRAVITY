@@ -893,3 +893,194 @@ body {
 .onboarding-btn:active {
   transform: scale(0.95);
 }
+
+/* From Uiverse.io by SSpisso - Adapted for Zero Gravity Start Button */
+.start-btn {
+  --primary: var(--accent-primary);
+  --neutral-1: #1e1e2e;
+  --neutral-2: #161626;
+  --radius: 14px;
+
+  cursor: pointer;
+  border-radius: var(--radius);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  border: none;
+  box-shadow: 0 0.5px 0.5px 1px rgba(255, 255, 255, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.3), 0 4px 5px 0px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+  min-width: 220px;
+  padding: 18px 24px;
+  height: 60px;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  background: transparent;
+  z-index: 1;
+}
+
+.start-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 1px 2px rgba(255, 255, 255, 0.15),
+    0 15px 30px rgba(0, 0, 0, 0.4), 0 10px 3px -3px rgba(0, 0, 0, 0.1);
+}
+
+.start-btn:active {
+  transform: scale(0.98);
+}
+
+.start-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background: linear-gradient(var(--neutral-1), var(--neutral-2)) padding-box,
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.45)) border-box;
+  z-index: -1;
+  transition: all 0.4s ease;
+}
+
+.start-btn:hover::after {
+  transform: scale(1.03, 1.05);
+  box-shadow: inset 0 -1px 3px 0 rgba(255, 255, 255, 0.1);
+}
+
+.start-btn::before {
+  content: "";
+  inset: 5px;
+  position: absolute;
+  background: linear-gradient(to top, var(--neutral-1), var(--neutral-2));
+  border-radius: 12px;
+  filter: blur(0.5px);
+  z-index: -1;
+}
+
+/* Outline Animation */
+.start-btn-outline {
+  position: absolute;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  inset: -2px;
+}
+
+.start-btn-outline::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 180deg,
+    transparent 60%,
+    var(--accent-primary) 80%,
+    transparent 100%
+  );
+  animation: start-spin 2s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes start-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.start-btn:hover .start-btn-outline { opacity: 1; }
+.start-btn:hover .start-btn-outline::before { animation-play-state: running; }
+
+/* States & Letters */
+.btn-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 2;
+  position: relative;
+}
+
+.btn-state p {
+  display: flex;
+  margin: 0;
+}
+
+.btn-state p span {
+  display: block;
+  opacity: 0;
+  animation: btn-slideDown 0.8s ease forwards calc(var(--i) * 0.03s);
+}
+
+.start-btn:hover p span {
+  opacity: 1;
+  animation: btn-wave 0.5s ease forwards calc(var(--i) * 0.02s);
+}
+
+@keyframes btn-wave {
+  30% { opacity: 1; transform: translateY(4px); }
+  50% { opacity: 1; transform: translateY(-3px); color: var(--accent-primary); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes btn-slideDown {
+  0% { opacity: 0; transform: translateY(-20px); color: var(--accent-primary); filter: blur(5px); }
+  30% { opacity: 1; transform: translateY(4px); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Plane Animation */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.start-btn:hover .btn-icon {
+  transform: rotate(45deg) scale(1.1);
+}
+
+/* Processing State (Taking off) */
+.start-btn.is-processing .btn-icon svg {
+  animation: btn-takeOff 0.8s linear forwards;
+}
+
+@keyframes btn-takeOff {
+  0% { opacity: 1; }
+  60% { opacity: 1; transform: translateX(50px) rotate(45deg) scale(1.5); }
+  100% { opacity: 0; transform: translateX(120px) rotate(45deg) scale(0); }
+}
+
+.start-btn.is-processing .btn-state p span {
+  animation: btn-disappear 0.6s ease forwards calc(var(--i) * 0.03s);
+}
+
+@keyframes btn-disappear {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(20px); filter: blur(5px); }
+}
+
+/* Sent State */
+.state--sent {
+  display: none;
+}
+
+.start-btn.is-sent .state--default { display: none; }
+.start-btn.is-sent .state--sent { display: flex; }
+
+.start-btn.is-sent .state--sent span {
+  opacity: 0;
+  animation: btn-slideDown 0.8s ease forwards calc(var(--i) * 0.1s);
+}
+
+.start-btn.is-sent .btn-icon svg {
+  opacity: 0;
+  animation: btn-appear 1s ease forwards 0.5s;
+}
+
+@keyframes btn-appear {
+  0% { opacity: 0; transform: scale(3) rotate(-40deg); filter: blur(4px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
