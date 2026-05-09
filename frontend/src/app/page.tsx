@@ -48,6 +48,7 @@ interface CollectedLinkedin {
 interface CollectedData {
   github?: CollectedGithub;
   linkedin?: CollectedLinkedin;
+  skills?: string[];
 }
 
 function extractSkillsFromText(text: string): string[] {
