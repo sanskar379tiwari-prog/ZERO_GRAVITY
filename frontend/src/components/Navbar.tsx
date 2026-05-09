@@ -24,30 +24,29 @@ export const Navbar = () => {
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
-      scrolled ? 'py-3' : 'py-6'
+      scrolled ? 'py-2' : 'py-5'
     }`}>
       <div className="container mx-auto px-6">
-        <div className={`relative flex items-center justify-between px-6 py-3 transition-all duration-500 ${
+        <div className={`relative flex items-center justify-between px-8 py-3 transition-all duration-500 ${
           scrolled 
-            ? 'bg-slate-900/60 backdrop-blur-xl border-white/10 shadow-2xl rounded-2xl' 
-            : 'bg-transparent border-transparent rounded-none'
+            ? 'bg-white/80 backdrop-blur-xl border-slate-200 shadow-sm rounded-2xl' 
+            : 'bg-transparent border-transparent'
         } border`}>
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-cyan-400 blur-md opacity-20 group-hover:opacity-40 transition-opacity" />
-              <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+              <div className="relative h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center">
                 <Rocket size={18} className="text-white" />
               </div>
             </div>
-            <span className="logo-text !text-lg md:!text-xl tracking-[0.2em]">
+            <span className="logo-text !text-base tracking-[0.15em] text-slate-900">
               Zero Gravity
             </span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-10">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               const Icon = link.icon;
@@ -55,16 +54,16 @@ export const Navbar = () => {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`group relative flex items-center gap-2 text-sm font-medium transition-colors ${
-                    isActive ? 'text-cyan-400' : 'text-slate-300 hover:text-white'
+                  className={`group relative flex items-center gap-2 text-sm font-bold tracking-tight transition-colors ${
+                    isActive ? 'text-purple-600' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
-                  <Icon size={16} className={isActive ? 'text-cyan-400' : 'text-slate-400 group-hover:text-cyan-300'} />
+                  <Icon size={16} className={isActive ? 'text-purple-600' : 'text-slate-400 group-hover:text-slate-900'} />
                   {link.name}
                   {isActive && (
                     <motion.div
                       layoutId="nav-active"
-                      className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-gradient-to-right from-cyan-400 to-blue-500 rounded-full"
+                      className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-purple-600 rounded-full"
                     />
                   )}
                 </Link>

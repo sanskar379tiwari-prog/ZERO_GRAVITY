@@ -119,7 +119,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#041423] flex flex-col items-center justify-center p-6 text-slate-300">
+      <main className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center p-6 text-slate-900">
         <Loader message="Orchestrating High-Fidelity Job Matches..." />
         <p className="mt-4 text-sm text-slate-500 max-w-md text-center">
           Our AI is currently performing semantic analysis and ATS scoring across multiple sources to find your perfect fit.
@@ -129,17 +129,23 @@ export default function DashboardPage() {
   }
 
   if (error) {
-    return <div className="p-6 text-red-300">{error}</div>;
+    return (
+      <main className="min-h-screen bg-[#fafafa] p-12 text-center">
+        <div className="mx-auto max-w-md rounded-2xl border border-red-100 bg-red-50 p-6 text-red-700">
+          {error}
+        </div>
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-[#041423] p-6 text-slate-100">
-      <div className="mx-auto mb-6 flex max-w-6xl flex-wrap items-center justify-between gap-6">
+    <main className="min-h-screen bg-[#fafafa] p-6 text-slate-900">
+      <div className="mx-auto mb-12 flex max-w-5xl flex-wrap items-end justify-between gap-6 border-b border-slate-200 pb-8">
         <div className="flex-1 min-w-[300px]">
-          <h1 className="text-3xl font-semibold">Matched Jobs</h1>
-          <p className="mt-1 text-sm text-slate-300/80">Real-time backend scoring, outreach, and tracking.</p>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900">Matched Jobs</h1>
+          <p className="mt-2 text-base text-slate-500">Real-time semantic scoring and orchestration.</p>
           
-          <div className="mt-4">
+          <div className="mt-6">
             <UiverseInput 
               placeholder="Search for roles (e.g. React Developer)..."
               value={searchQuery}
@@ -150,22 +156,16 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Link
             href="/applications"
-            className="rounded-full border border-cyan-200/40 bg-slate-900/45 px-4 py-2 text-sm transition hover:bg-slate-800/80"
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Applications
           </Link>
-          <button
-            onClick={() => { localStorage.removeItem("zg_matched_jobs"); window.location.reload(); }}
-            className="rounded-full border border-slate-500/40 bg-slate-900/30 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800/80"
-          >
-            Refresh Search
-          </button>
           <Link
             href="/"
-            className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-white"
+            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             New Search
           </Link>
@@ -173,90 +173,99 @@ export default function DashboardPage() {
       </div>
 
       {toast && (
-        <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">
+        <div className="mx-auto mb-8 max-w-5xl rounded-xl border border-purple-100 bg-purple-50 px-5 py-3 text-sm font-medium text-purple-700 animate-in fade-in slide-in-from-top-4">
           {toast}
         </div>
       )}
 
-      <div className="mx-auto space-y-4 max-w-6xl">
+      <div className="mx-auto space-y-6 max-w-5xl">
       {jobs.map((job, idx) => (
-        <div key={job.job_id || `job-${idx}`} className="rounded-2xl border border-slate-700/60 bg-[#061a2c]/85 p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold">{job.title}</h2>
-              <p className="text-sm text-slate-300/70">
-                {job.company} • {job.location} • <span className="text-cyan-400/90">{job.source}</span>
+        <div key={job.job_id || `job-${idx}`} className="minimal-card p-8 bg-white">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-slate-900">{job.title}</h2>
+              <p className="text-base text-slate-500 font-medium">
+                {job.company} • {job.location} • <span className="text-purple-600">{job.source}</span>
               </p>
             </div>
             <div className="text-right">
-              <p className="rounded-full bg-cyan-500/15 px-3 py-1 text-sm font-medium text-cyan-200">
-                Match Score: {job.match_score}%
-              </p>
-              <div className="mt-1 flex justify-end gap-2 text-[10px] uppercase tracking-wider text-slate-400">
-                <span>Semantic: {Math.round((job.semantic_score || 0) * 100)}%</span>
-                <span>ATS: {Math.round((job.ats_score || 0) * 100)}%</span>
+              <div className="inline-flex flex-col items-end">
+                <span className="text-3xl font-black text-slate-900">{job.match_score}%</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Match Score</span>
+              </div>
+              <div className="mt-2 flex justify-end gap-3 text-[11px] font-bold uppercase tracking-tight text-slate-400">
+                <span className="bg-slate-50 px-2 py-0.5 rounded">Semantic: {Math.round((job.semantic_score || 0) * 100)}%</span>
+                <span className="bg-slate-50 px-2 py-0.5 rounded">ATS: {Math.round((job.ats_score || 0) * 100)}%</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2 text-slate-900">
+          <div className="mt-6 flex flex-wrap gap-2">
             {Array.isArray(job.matched_skills) && job.matched_skills.length > 0 ? (
               job.matched_skills.map((skill) => (
                 <span
                   key={skill}
-                  className="rounded-full bg-slate-100 px-3 py-1 text-sm"
+                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 border border-slate-200/50"
                 >
                   {skill}
                 </span>
               ))
             ) : (
-              <span className="text-xs text-slate-400">No technical skills listed</span>
+              <span className="text-xs text-slate-400 italic">No technical skills listed</span>
             )}
           </div>
 
-          <div className="mt-4">
-            <p className="font-medium text-slate-100">Why Matched:</p>
-
-            <ul className="list-disc pl-5 text-sm text-slate-300/85">
-              {Array.isArray(job.reasoning) && job.reasoning.length > 0 ? (
-                job.reasoning.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))
-              ) : (
-                <li>Analysis pending for this role.</li>
-              )}
-            </ul>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link
-              href={`/resume-compare/${encodeURIComponent(job.job_id || (job as any).id)}`}
-              className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-2 text-sm text-cyan-100 transition hover:bg-slate-800/80"
-            >
-              Tailor Resume
-            </Link>
-            <button
-              onClick={() => handleDraft(job)}
-              disabled={busyJobId === job.job_id}
-              className="rounded-full border border-slate-500/60 bg-slate-900/35 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-800/70 disabled:opacity-55"
-            >
-              {busyJobId === job.job_id ? "Generating..." : "Draft Outreach"}
-            </button>
-            <button
-              onClick={() => handleTrack(job)}
-              disabled={busyJobId === job.job_id}
-              className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-white disabled:opacity-60"
-            >
-              {busyJobId === job.job_id ? "Saving..." : "Track Application"}
-            </button>
+          <div className="mt-8 grid md:grid-cols-2 gap-8 pt-8 border-t border-slate-100">
+            <div>
+              <p className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Core Reasoning</p>
+              <ul className="space-y-2">
+                {Array.isArray(job.reasoning) && job.reasoning.length > 0 ? (
+                  job.reasoning.map((reason, rIdx) => (
+                    <li key={rIdx} className="flex gap-3 text-sm text-slate-600 leading-relaxed">
+                      <span className="text-purple-500 font-bold">•</span>
+                      {reason}
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-sm text-slate-400 italic">Analysis pending for this role.</li>
+                )}
+              </ul>
+            </div>
+            
+            <div className="flex flex-col justify-end gap-3">
+              <div className="flex gap-3">
+                <Link
+                  href={`/resume-compare/${encodeURIComponent(job.job_id || (job as any).id)}`}
+                  className="flex-1 text-center rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-900 transition hover:bg-slate-50"
+                >
+                  Tailor Resume
+                </Link>
+                <button
+                  onClick={() => handleDraft(job)}
+                  disabled={busyJobId === job.job_id}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-900 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {busyJobId === job.job_id ? "Generating..." : "Draft Email"}
+                </button>
+              </div>
+              <button
+                onClick={() => handleTrack(job)}
+                disabled={busyJobId === job.job_id}
+                className="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                {busyJobId === job.job_id ? "Saving..." : "Track Application"}
+              </button>
+            </div>
           </div>
 
           {draftForJobId === job.job_id && draftEmail && (
-            <div className="mt-4 rounded-xl border border-slate-700/70 bg-slate-900/45 p-4">
-              <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">Draft Subject</p>
-              <p className="text-sm text-slate-200">{draftEmail.subject}</p>
-              <p className="mb-1 mt-3 text-xs uppercase tracking-wide text-slate-400">Draft Body</p>
-              <p className="whitespace-pre-wrap text-sm text-slate-300/90">{draftEmail.email_body}</p>
+            <div className="mt-8 rounded-2xl border border-slate-100 bg-slate-50/50 p-6">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Subject Line</p>
+              <p className="text-sm font-bold text-slate-900 mb-4">{draftEmail.subject}</p>
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Email Body</p>
+              <div className="whitespace-pre-wrap text-sm text-slate-600 leading-relaxed bg-white p-4 rounded-xl border border-slate-100">
+                {draftEmail.email_body}
+              </div>
             </div>
           )}
         </div>

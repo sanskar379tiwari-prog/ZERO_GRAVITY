@@ -268,50 +268,41 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#041423] px-4 py-16">
-      <div className="absolute inset-0 z-0 opacity-40">
-        <FaultyTerminal 
-          curvature={0.15}
-          glitchAmount={1.1}
-          scanlineIntensity={0.25}
-          tint="#22d3ee"
-          brightness={0.6}
-        />
-      </div>
-      
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(4,20,35,0.2),rgba(4,20,35,0.95)_70%)]" />
-      
-      <div className="pointer-events-none absolute inset-0 z-10">
-        {["top-20 left-[12%]", "top-40 left-[72%]", "top-[62%] left-[14%]", "top-[70%] left-[84%]"].map((star) => (
-          <span
-            key={star}
-            className={`absolute h-1.5 w-1.5 rounded-full bg-white/80 shadow-[0_0_14px_rgba(255,255,255,0.7)] ${star}`}
-          />
-        ))}
+    <main className="relative min-h-screen bg-[#fafafa] px-4 py-24">
+      {/* Minimal Background Decor */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-purple-50 rounded-full blur-[120px] opacity-60" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60" />
       </div>
 
-      <div className="relative mx-auto max-w-4xl rounded-2xl border border-cyan-300/20 bg-[#061a2c]/80 p-8 backdrop-blur-sm md:p-12">
-        <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="logo-text mb-4 text-xl md:text-2xl opacity-90 animate-fade-in">
+      <div className="relative z-10 mx-auto max-w-4xl">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
+          <p className="logo-text mb-6 text-sm md:text-base opacity-60">
             Zero Gravity AI
           </p>
           <TrueFocus 
             sentence="Find Matches. Score, Tailor, Apply Faster."
-            blurAmount={4}
-            borderColor="#22d3ee"
-            glowColor="rgba(34, 211, 238, 0.4)"
-            animationDuration={0.6}
-            pauseBetweenAnimations={1.5}
+            blurAmount={2}
+            borderColor="#7c3aed"
+            glowColor="rgba(124, 58, 237, 0.1)"
+            animationDuration={0.4}
+            pauseBetweenAnimations={2}
           />
-          <p className="mx-auto mt-5 max-w-xl text-sm text-slate-300/80 md:text-base">
-            Minimal workflow: upload your resume or just use links, run the AI pipeline, and move directly to your personalized job dashboard.
+          <p className="mx-auto mt-8 max-w-xl text-base text-slate-500 leading-relaxed">
+            The minimalist AI orchestration suite. Upload your profile, find your match, and automate your career growth with precision.
           </p>
         </div>
 
-        <div className="onboarding-card animate-slide-up">
-          <div className="onboarding-title">
-            <span>Configuration & Orchestration</span>
-          </div>
+        <div className="mx-auto max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-2 md:p-4">
+          <div className="onboarding-card border-none shadow-none !w-full">
+            <div className="onboarding-title flex items-center justify-between">
+              <span>Pipeline Configuration</span>
+              <div className="flex gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-slate-200" />
+                <span className="w-2 h-2 rounded-full bg-slate-200" />
+                <span className="w-2 h-2 rounded-full bg-slate-200" />
+              </div>
+            </div>
 
           <div className="onboarding-content">
             {/* Step 1: Document Parsing */}
