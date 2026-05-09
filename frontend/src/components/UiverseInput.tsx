@@ -27,20 +27,18 @@ export const UiverseInput: React.FC<UiverseInputProps> = ({
   className = ""
 }) => {
   return (
-    <div className={cn("flex flex-col gap-1.5 w-full", className)}>
+    <div className={cn("flex flex-col gap-2 w-full", className)}>
       {label && (
-        <div className="flex items-center gap-1">
-          <label className="text-sm font-medium text-slate-700">
-            {label}
-            {required && <span className="text-purple-600 ml-0.5">*</span>}
-          </label>
-        </div>
+        <label className="text-xs font-black uppercase tracking-widest text-[#323232]">
+          {label}
+          {required && <span className="text-[#2d8cf0] ml-1">*</span>}
+        </label>
       )}
       
       <div className="relative group flex items-center">
         <input
           type={type}
-          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 transition-all shadow-sm"
+          className="w-full px-4 py-3 bg-white border-2 border-[#323232] rounded-[5px] text-sm font-black text-[#323232] placeholder:text-[#999] focus:outline-none focus:shadow-[4px_4px_#2d8cf0] focus:border-[#2d8cf0] transition-all shadow-[4px_4px_#323232]"
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -51,7 +49,7 @@ export const UiverseInput: React.FC<UiverseInputProps> = ({
         {buttonText && (
           <button 
             onClick={onAction}
-            className="absolute right-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors"
+            className="absolute right-2 px-4 py-1.5 bg-[#323232] text-white text-[10px] font-black uppercase tracking-widest rounded-[3px] hover:translate-x-[1px] hover:translate-y-[1px] transition-transform"
           >
             {buttonText}
           </button>
@@ -59,7 +57,7 @@ export const UiverseInput: React.FC<UiverseInputProps> = ({
       </div>
 
       {hint && (
-        <p className="text-xs text-slate-400 ml-1">
+        <p className="text-[10px] text-[#999] font-black uppercase tracking-widest ml-1">
           {hint}
         </p>
       )}

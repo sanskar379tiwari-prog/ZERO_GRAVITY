@@ -1,12 +1,8 @@
 "use client";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { UiverseInput } from "@/components/UiverseInput";
-import { TerminalCard } from "@/components/TerminalCard";
+import { BashTerminal } from "@/components/BashTerminal";
 import { Loader } from "@/components/Loader";
-import { StartButton } from "@/components/StartButton";
-import { TrueFocus } from "@/components/TrueFocus";
-import { FaultyTerminal } from "@/components/FaultyTerminal";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -116,6 +112,11 @@ export default function OnboardingPage() {
   const [collectLoading, setCollectLoading] = useState(false);
   const [collectError, setCollectError] = useState("");
   const [collectedData, setCollectedData] = useState<CollectedData | null>(null);
+  const [logs, setLogs] = useState<{ type: 'cmd' | 'out' | 'err' | 'success'; text: string }[]>([]);
+
+  const addLog = (type: 'cmd' | 'out' | 'err' | 'success', text: string) => {
+    setLogs(prev => [...prev, { type, text }]);
+  };
   const preview = useMemo(() => {
     const githubUsername = extractGithubUsername(github);
     const inferredSkills = extractSkillsFromText(`${linkedin} ${github}`);
@@ -186,11 +187,14 @@ export default function OnboardingPage() {
       return;
     }
     setError(""); setLoading(true); setCurrentStep(1);
+    setLogs([]);
+    addLog('cmd', 'zero-gravity pipeline --start');
 
     try {
       let profile: Profile;
       
-      // Step 1+2: Extract profile (Always use backend now)
+      // Step 1+2: Extract profile
+      addLog('out', '[1/4] Uploading resume & extracting profile...');
       const form = new FormData();
       if (file) form.append("resume_pdf", file);
       if (linkedin) form.append("linkedin_about", linkedin);
@@ -203,24 +207,30 @@ export default function OnboardingPage() {
       const profileRes = await fetch(`${API}/extract-profile`, { method: "POST", body: form });
       if (!profileRes.ok) throw new Error("Profile extraction failed");
       profile = await profileRes.json();
+      addLog('success', `Profile extracted: ${profile.name || 'Unknown'} (${profile.skills?.length || 0} skills)`);
 
       // Step 3: Fetch jobs
       setCurrentStep(3);
       const query = role || profile.roles?.[0] || "software engineer";
+      addLog('out', `[2/4] Discovering jobs for "${query}"...`);
       const jobsRes = await fetch(`${API}/jobs?query=${encodeURIComponent(query)}`);
       if (!jobsRes.ok) throw new Error("Job discovery failed");
       const jobs = await jobsRes.json();
+      addLog('success', `Found ${jobs.length} job listings`);
 
-      // Step 4: Score jobs (Using standardized /api/match)
+      // Step 4: Score jobs
       setCurrentStep(4);
+      addLog('out', '[3/4] Running semantic + ATS scoring...');
       const scoreRes = await fetch(`${API}/api/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile, query, location: profile.location || location || "" }),
       });
       const scoredJobs = scoreRes.ok ? await scoreRes.json() : jobs.map((j: any) => ({ ...j, match_score: 0 }));
+      addLog('success', `Scored ${scoredJobs.length} matches`);
 
       // Keep matched jobs store in sync for compare page routing
+      addLog('out', '[4/4] Finalizing results...');
       const matchRes = await fetch(`${API}/api/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -233,11 +243,12 @@ export default function OnboardingPage() {
       if (resumeBase64) {
         localStorage.setItem("zg_resume_base64", resumeBase64);
       }
-      // Standardized to use ONE key: zg_matched_jobs
       localStorage.setItem("zg_matched_jobs", JSON.stringify(scoredJobs.length > 0 ? scoredJobs : matchedJobs));
-      router.push("/dashboard");
+      addLog('success', 'Pipeline complete. Redirecting to dashboard...');
+      setTimeout(() => router.push("/dashboard"), 800);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
+      addLog('err', `ERROR: ${msg}`);
       setError(`Pipeline error: ${msg}. Try again.`);
       setLoading(false); setCurrentStep(0);
     }
@@ -250,6 +261,7 @@ export default function OnboardingPage() {
     }
     setCollectError("");
     setCollectLoading(true);
+    addLog('cmd', `zero-gravity collect --github="${github}" --linkedin="${linkedinUrl}"`);
     try {
       const res = await fetch(`${API}/collect-link-data`, {
         method: "POST",
@@ -259,8 +271,11 @@ export default function OnboardingPage() {
       if (!res.ok) throw new Error(`Collect failed: ${res.status}`);
       const data = (await res.json()) as CollectedData;
       setCollectedData(data);
+      addLog('success', `Collected data from ${github ? 'GitHub' : ''} ${linkedinUrl ? 'LinkedIn' : ''}`);
+      if (data.skills) addLog('out', `Detected skills: ${data.skills.join(', ')}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";
+      addLog('err', `Collect error: ${msg}`);
       setCollectError(msg);
     } finally {
       setCollectLoading(false);
@@ -268,185 +283,146 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="relative min-h-screen bg-[#fafafa] px-4 py-24">
-      {/* Minimal Background Decor */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-purple-50 rounded-full blur-[120px] opacity-60" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-4xl">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
-          <p className="logo-text mb-6 text-sm md:text-base opacity-60">
+    <main className="relative min-h-screen bg-[#fafafa] px-4 py-20">
+      <div className="relative z-10 mx-auto max-w-xl">
+        {/* Hero Heading */}
+        <div className="mb-10 text-center">
+          <p className="logo-text mb-3 text-xs tracking-[0.25em] opacity-50">
             Zero Gravity AI
           </p>
-          <TrueFocus 
-            sentence="Find Matches. Score, Tailor, Apply Faster."
-            blurAmount={2}
-            borderColor="#7c3aed"
-            glowColor="rgba(124, 58, 237, 0.1)"
-            animationDuration={0.4}
-            pauseBetweenAnimations={2}
-          />
-          <p className="mx-auto mt-8 max-w-xl text-base text-slate-500 leading-relaxed">
-            The minimalist AI orchestration suite. Upload your profile, find your match, and automate your career growth with precision.
+          <h1 className="text-4xl md:text-5xl font-black text-[#323232] leading-tight tracking-tight">
+            Find Matches.<br />
+            <span className="text-[#666]">Score, Tailor, Apply Faster.</span>
+          </h1>
+          <p className="mt-5 text-base text-[#666] leading-relaxed max-w-md mx-auto">
+            Upload your resume, configure your target, and let AI orchestrate your entire job search.
           </p>
         </div>
 
-        <div className="mx-auto max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-2 md:p-4">
-          <div className="onboarding-card border-none shadow-none !w-full">
-            <div className="onboarding-title flex items-center justify-between">
-              <span>Pipeline Configuration</span>
-              <div className="flex gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-slate-200" />
-                <span className="w-2 h-2 rounded-full bg-slate-200" />
-                <span className="w-2 h-2 rounded-full bg-slate-200" />
-              </div>
-            </div>
+        {/* Neo-Brutalist Form */}
+        <div className="neo-form">
+          <div className="text-lg font-black text-[#323232]">
+            Pipeline Config<br />
+            <span className="text-sm font-600 text-[#666]">fill in your details to start</span>
+          </div>
 
-          <div className="onboarding-content">
-            {/* Step 1: Document Parsing */}
-            <div className="onboarding-step">
-              <label>Resume Source</label>
-              <div
-                id="resume-drop-zone"
-                onClick={() => fileRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={onDrop}
-                className="cursor-pointer rounded-xl border border-dashed p-4 text-center transition-all bg-white/5 border-white/10 hover:border-cyan-400/50"
-              >
-                <p className="text-sm font-medium text-slate-100">
-                  {file ? `📄 ${file.name}` : "Drop resume PDF or click to upload"}
-                </p>
-                <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} />
-              </div>
+          {/* Resume Upload */}
+          <div>
+            <label className="neo-label">Resume Source</label>
+            <div
+              id="resume-drop-zone"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              className="neo-dropzone"
+            >
+              <p className="text-sm font-semibold text-[#323232]">
+                {file ? `📄 ${file.name}` : "Drop resume PDF or click to upload"}
+              </p>
+              <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} />
             </div>
+          </div>
 
-            {/* Step 2: Role & Location */}
-            <div className="onboarding-step">
-              <label>Target Parameters</label>
-              <div className="space-y-3">
-                <UiverseInput
-                  placeholder="Target role (e.g. Frontend Engineer)"
-                  value={role}
-                  onChange={setRole}
-                  buttonText="Role"
-                  className="!max-w-full !h-10"
-                />
-                <UiverseInput
-                  placeholder="Preferred location (e.g. Remote, NY)"
-                  value={location}
-                  onChange={setLocation}
-                  buttonText="Loc"
-                  className="!max-w-full !h-10"
-                />
-              </div>
+          {/* Role & Location */}
+          <div>
+            <label className="neo-label">Target Role</label>
+            <input
+              className="neo-input"
+              placeholder="e.g. Frontend Engineer"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="neo-label">Preferred Location</label>
+            <input
+              className="neo-input"
+              placeholder="e.g. Remote, New York"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+
+          {/* Social Links */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="neo-label">GitHub URL</label>
+              <input
+                id="github-input"
+                className="neo-input"
+                placeholder="https://github.com/..."
+                value={github}
+                onChange={(e) => setGithub(e.target.value)}
+              />
             </div>
-
-            {/* Step 3: Social Connectivity */}
-            <div className="onboarding-step">
-              <label>Social Intelligence</label>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <input
-                  id="github-input"
-                  className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-                  placeholder="GitHub URL"
-                  value={github}
-                  onChange={(e) => setGithub(e.target.value)}
-                />
-                <input
-                  id="linkedin-url-input"
-                  className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-                  placeholder="LinkedIn URL"
-                  value={linkedinUrl}
-                  onChange={(e) => setLinkedinUrl(e.target.value)}
-                />
-              </div>
+            <div>
+              <label className="neo-label">LinkedIn URL</label>
+              <input
+                id="linkedin-url-input"
+                className="neo-input"
+                placeholder="https://linkedin.com/in/..."
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+              />
             </div>
+          </div>
 
-            {/* Step 4: Work Style */}
-            <div className="onboarding-step">
-              <label>Work Style Preference</label>
-              <select
-                id="remote-select"
-                className="w-full rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-                value={remote}
-                onChange={(e) => setRemote(e.target.value)}
-              >
-                <option value="flexible">Flexible Remote Preference</option>
-                <option value="remote">Remote Only</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="onsite">On-site</option>
-              </select>
-            </div>
+          {/* Work Style */}
+          <div>
+            <label className="neo-label">Work Style</label>
+            <select
+              id="remote-select"
+              className="neo-select"
+              value={remote}
+              onChange={(e) => setRemote(e.target.value)}
+            >
+              <option value="flexible">Flexible</option>
+              <option value="remote">Remote Only</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">On-site</option>
+            </select>
+          </div>
 
+          {/* Extra Notes */}
+          <div>
+            <label className="neo-label">Additional Notes</label>
             <textarea
               id="linkedin-input"
-              className="w-full resize-none rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              className="neo-textarea"
               rows={2}
               placeholder="Paste LinkedIn About or hiring notes here..."
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
             />
-
-            <TerminalCard title="AI Extraction Console" className="!m-0 !max-w-full">
-              {!preview.hasAnyInput ? (
-                <p className="text-center text-xs text-slate-400">
-                  Waiting for input... Use the form above to provide details for AI analysis.
-                </p>
-              ) : (
-                <div className="space-y-3 text-[11px]">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white/5 p-1.5 rounded border border-white/5">
-                      <span className="text-cyan-400 uppercase">Role:</span> {preview.role}
-                    </div>
-                    <div className="bg-white/5 p-1.5 rounded border border-white/5">
-                      <span className="text-cyan-400 uppercase">Loc:</span> {preview.location}
-                    </div>
-                  </div>
-                  {preview.inferredSkills.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {preview.inferredSkills.map((s) => (
-                        <span key={s} className="px-1.5 py-0.5 bg-cyan-500/10 text-cyan-200 rounded border border-cyan-500/20">{s}</span>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={collectFromLinks}
-                    disabled={collectLoading}
-                    className="text-[10px] text-cyan-300 hover:text-cyan-100 underline decoration-cyan-500/50"
-                  >
-                    {collectLoading ? "Scanning..." : "Re-scan Social Profiles"}
-                  </button>
-                </div>
-              )}
-            </TerminalCard>
           </div>
 
-          <div className="onboarding-footer">
-            <div className="onboarding-price">
-              ⚡ <span>{loading ? "Processing" : "Ready"}</span>
-            </div>
-            <StartButton
+          {/* Bash Terminal for Logs and Errors */}
+          <BashTerminal 
+            lines={logs} 
+            className="mt-6"
+          />
+
+          {/* Submit */}
+          <div className="flex items-center justify-between pt-6">
+            <span className="text-sm font-bold text-[#323232]">
+              ⚡ {loading ? "Pipeline Active" : "Ready to Orchestrate"}
+            </span>
+            <button
               onClick={runPipeline}
-              loading={loading}
-              text="Start Discovery"
-            />
+              disabled={loading}
+              className="neo-btn px-8"
+            >
+              {loading ? "Running..." : "Let's go →"}
+            </button>
           </div>
         </div>
 
-        {error && (
-          <div className="mx-auto mt-4 max-w-md rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300 text-center">
-            {error}
-          </div>
-        )}
-
         {loading && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-            <div className="max-w-md w-full px-6">
-              <Loader message={STEPS[currentStep - 1]?.label || "Initializing Orchestrator..."} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <div className="max-w-xl w-full px-6 flex flex-col items-center">
+              <Loader message={STEPS[currentStep - 1]?.label || "Initializing..."} className="mb-8" />
+              <BashTerminal lines={logs} className="w-full" />
             </div>
           </div>
         )}

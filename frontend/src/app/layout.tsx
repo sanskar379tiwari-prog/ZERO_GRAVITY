@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} bg-mesh min-h-screen antialiased`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} bg-[#fafafa] min-h-screen antialiased`}>
         <Navbar />
         <div className="pt-24 md:pt-28">
           {children}
