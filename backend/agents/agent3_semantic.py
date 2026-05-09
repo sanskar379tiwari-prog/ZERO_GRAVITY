@@ -10,7 +10,7 @@ def get_client():
     load_dotenv(override=True)
     return genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
 
-MODEL = "text-embedding-004"
+MODEL = "embedding-001"
 
 def get_embedding(text: str) -> list:
     """Get vector embedding for a string."""
