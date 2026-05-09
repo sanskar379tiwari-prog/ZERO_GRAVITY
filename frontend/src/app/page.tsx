@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { UiverseInput } from "@/components/UiverseInput";
+import { TerminalCard } from "@/components/TerminalCard";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -370,37 +371,38 @@ export default function OnboardingPage() {
             onChange={(e) => setLinkedin(e.target.value)}
           />
 
-          <div className="rounded-xl border border-cyan-300/25 bg-slate-900/45 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200/85">
-              Collected Info Preview
-            </p>
+          <TerminalCard title="AI Extraction Console" className="mt-8">
             {!preview.hasAnyInput ? (
-              <p className="mt-2 text-sm text-slate-300/75">
-                Add GitHub/LinkedIn/role/location to preview what will be used in matching.
+              <p className="text-center text-sm text-slate-300/75">
+                Waiting for input... Add GitHub/LinkedIn or upload a resume to see the AI analyze your profile in real-time.
               </p>
             ) : (
-              <div className="mt-3 space-y-3 text-sm">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">Role:</span> {preview.role}
-                  </p>
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">Location:</span> {preview.location}
-                  </p>
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">Remote:</span> {preview.remotePreference}
-                  </p>
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">GitHub user:</span> {preview.githubUsername || "Not detected"}
-                  </p>
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                    <p className="text-xs uppercase text-cyan-400 mb-1">Target Role</p>
+                    <p className="text-slate-100 font-medium">{preview.role}</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                    <p className="text-xs uppercase text-cyan-400 mb-1">Location</p>
+                    <p className="text-slate-100 font-medium">{preview.location}</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                    <p className="text-xs uppercase text-cyan-400 mb-1">Remote Preference</p>
+                    <p className="text-slate-100 font-medium">{preview.remotePreference}</p>
+                  </div>
+                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                    <p className="text-xs uppercase text-cyan-400 mb-1">GitHub Status</p>
+                    <p className="text-slate-100 font-medium">{preview.githubUsername || "Scanning..."}</p>
+                  </div>
                 </div>
 
                 {preview.inferredSkills.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">Inferred skills</p>
-                    <div className="flex flex-wrap gap-1.5">
+                  <div className="animate-fade-in">
+                    <p className="mb-2 text-xs uppercase tracking-wider text-slate-400">Inferred Technical Stack</p>
+                    <div className="flex flex-wrap gap-2">
                       {preview.inferredSkills.map((skill) => (
-                        <span key={skill} className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-100">
+                        <span key={skill} className="rounded-md bg-cyan-500/20 border border-cyan-500/30 px-3 py-1 text-xs text-cyan-100">
                           {skill}
                         </span>
                       ))}
@@ -408,67 +410,20 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                {preview.linkedinKeywords.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">LinkedIn keywords</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {preview.linkedinKeywords.map((kw) => (
-                        <span key={kw} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-900">
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {collectedData?.github && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">GitHub API data</p>
-                    {collectedData.github.status === "ok" ? (
-                      <div className="space-y-1 text-slate-300/90">
-                        <p>
-                          <span className="text-slate-400">Username:</span> {collectedData.github.username}
-                        </p>
-                        <p>
-                          <span className="text-slate-400">Repos:</span> {collectedData.github.public_repos} ·{" "}
-                          <span className="text-slate-400">Followers:</span> {collectedData.github.followers} ·{" "}
-                          <span className="text-slate-400">Stars:</span> {collectedData.github.total_stars}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-amber-300">GitHub: {collectedData.github.reason ?? "Not available"}</p>
-                    )}
-                  </div>
-                )}
-
-                {collectedData?.linkedin && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">LinkedIn (Apify)</p>
-                    {collectedData.linkedin.status === "ok" ? (
-                      <div className="space-y-1 text-slate-300/90">
-                        <p><span className="text-slate-400">Name:</span> {collectedData.linkedin.full_name || "—"}</p>
-                        <p><span className="text-slate-400">Headline:</span> {collectedData.linkedin.headline || "—"}</p>
-                        <p><span className="text-slate-400">Location:</span> {collectedData.linkedin.location || "—"}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-amber-300">LinkedIn: {collectedData.linkedin.reason ?? "Not available"}</p>
-                    )}
-                  </div>
-                )}
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={collectFromLinks}
+                    disabled={collectLoading}
+                    className="Subscribe-btn !w-40 !h-10 text-xs"
+                  >
+                    <span>{collectLoading ? "Scanning..." : "Deep Profile Scan"}</span>
+                  </button>
+                  {collectError && <span className="text-xs text-red-400 animate-pulse">{collectError}</span>}
+                </div>
               </div>
             )}
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={collectFromLinks}
-                disabled={collectLoading}
-                className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-1.5 text-xs font-medium text-cyan-100 transition hover:bg-slate-800/70 disabled:opacity-60"
-              >
-                {collectLoading ? "Collecting..." : "Collect From Links"}
-              </button>
-              {collectError && <span className="text-xs text-red-300">{collectError}</span>}
-            </div>
-          </div>
+          </TerminalCard>
 
           {error && (
             <div className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
