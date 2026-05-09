@@ -80,7 +80,7 @@ function ApplicationRow({
                   <h4 className="text-xs font-bold uppercase text-slate-500 tracking-widest">Outreach Draft</h4>
                   <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
                     <p className="text-xs font-semibold text-slate-400 mb-1">Subject: {app.outreach_draft.subject}</p>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap line-clamp-6">{app.outreach_draft.email_body}</p>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap">{app.outreach_draft.email_body}</p>
                   </div>
                 </div>
               )}
