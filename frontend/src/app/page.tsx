@@ -1,6 +1,8 @@
 "use client";
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { BashTerminal } from "@/components/BashTerminal";
+import { Loader } from "@/components/Loader";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -110,6 +112,11 @@ export default function OnboardingPage() {
   const [collectLoading, setCollectLoading] = useState(false);
   const [collectError, setCollectError] = useState("");
   const [collectedData, setCollectedData] = useState<CollectedData | null>(null);
+  const [logs, setLogs] = useState<{ type: 'cmd' | 'out' | 'err' | 'success'; text: string }[]>([]);
+
+  const addLog = (type: 'cmd' | 'out' | 'err' | 'success', text: string) => {
+    setLogs(prev => [...prev, { type, text }]);
+  };
   const preview = useMemo(() => {
     const githubUsername = extractGithubUsername(github);
     const inferredSkills = extractSkillsFromText(`${linkedin} ${github}`);
@@ -180,11 +187,14 @@ export default function OnboardingPage() {
       return;
     }
     setError(""); setLoading(true); setCurrentStep(1);
+    setLogs([]);
+    addLog('cmd', 'zero-gravity pipeline --start');
 
     try {
       let profile: Profile;
       
-      // Step 1+2: Extract profile (Always use backend now)
+      // Step 1+2: Extract profile
+      addLog('out', '[1/4] Uploading resume & extracting profile...');
       const form = new FormData();
       if (file) form.append("resume_pdf", file);
       if (linkedin) form.append("linkedin_about", linkedin);
@@ -197,24 +207,30 @@ export default function OnboardingPage() {
       const profileRes = await fetch(`${API}/extract-profile`, { method: "POST", body: form });
       if (!profileRes.ok) throw new Error("Profile extraction failed");
       profile = await profileRes.json();
+      addLog('success', `Profile extracted: ${profile.name || 'Unknown'} (${profile.skills?.length || 0} skills)`);
 
       // Step 3: Fetch jobs
       setCurrentStep(3);
       const query = role || profile.roles?.[0] || "software engineer";
+      addLog('out', `[2/4] Discovering jobs for "${query}"...`);
       const jobsRes = await fetch(`${API}/jobs?query=${encodeURIComponent(query)}`);
       if (!jobsRes.ok) throw new Error("Job discovery failed");
       const jobs = await jobsRes.json();
+      addLog('success', `Found ${jobs.length} job listings`);
 
-      // Step 4: Score jobs (Using standardized /api/match)
+      // Step 4: Score jobs
       setCurrentStep(4);
+      addLog('out', '[3/4] Running semantic + ATS scoring...');
       const scoreRes = await fetch(`${API}/api/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile, query, location: profile.location || location || "" }),
       });
       const scoredJobs = scoreRes.ok ? await scoreRes.json() : jobs.map((j: any) => ({ ...j, match_score: 0 }));
+      addLog('success', `Scored ${scoredJobs.length} matches`);
 
       // Keep matched jobs store in sync for compare page routing
+      addLog('out', '[4/4] Finalizing results...');
       const matchRes = await fetch(`${API}/api/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -227,11 +243,12 @@ export default function OnboardingPage() {
       if (resumeBase64) {
         localStorage.setItem("zg_resume_base64", resumeBase64);
       }
-      // Standardized to use ONE key: zg_matched_jobs
       localStorage.setItem("zg_matched_jobs", JSON.stringify(scoredJobs.length > 0 ? scoredJobs : matchedJobs));
-      router.push("/dashboard");
+      addLog('success', 'Pipeline complete. Redirecting to dashboard...');
+      setTimeout(() => router.push("/dashboard"), 800);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
+      addLog('err', `ERROR: ${msg}`);
       setError(`Pipeline error: ${msg}. Try again.`);
       setLoading(false); setCurrentStep(0);
     }
@@ -244,6 +261,7 @@ export default function OnboardingPage() {
     }
     setCollectError("");
     setCollectLoading(true);
+    addLog('cmd', `zero-gravity collect --github="${github}" --linkedin="${linkedinUrl}"`);
     try {
       const res = await fetch(`${API}/collect-link-data`, {
         method: "POST",
@@ -253,8 +271,11 @@ export default function OnboardingPage() {
       if (!res.ok) throw new Error(`Collect failed: ${res.status}`);
       const data = (await res.json()) as CollectedData;
       setCollectedData(data);
+      addLog('success', `Collected data from ${github ? 'GitHub' : ''} ${linkedinUrl ? 'LinkedIn' : ''}`);
+      if (data.skills) addLog('out', `Detected skills: ${data.skills.join(', ')}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";
+      addLog('err', `Collect error: ${msg}`);
       setCollectError(msg);
     } finally {
       setCollectLoading(false);
@@ -262,91 +283,97 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#041423] px-4 py-16">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,180,220,0.18),rgba(4,20,35,0.95)_48%)]" />
-      <div className="pointer-events-none absolute inset-0">
-        {["top-20 left-[12%]", "top-40 left-[72%]", "top-[62%] left-[14%]", "top-[70%] left-[84%]"].map((star) => (
-          <span
-            key={star}
-            className={`absolute h-1.5 w-1.5 rounded-full bg-white/80 shadow-[0_0_14px_rgba(255,255,255,0.7)] ${star}`}
-          />
-        ))}
-      </div>
-
-      <div className="relative mx-auto max-w-4xl rounded-2xl border border-cyan-300/20 bg-[#061a2c]/80 p-8 backdrop-blur-sm md:p-12">
-        <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="mb-3 text-sm tracking-wide text-cyan-200/80">Zero Gravity AI</p>
-          <h1 className="text-4xl font-semibold leading-tight text-slate-100 md:text-6xl">
-            Find Matches.
-            <br />
-            Score, Tailor,
-            <br />
-            Apply Faster.
+    <main className="relative min-h-screen bg-[#fafafa] px-4 py-20">
+      <div className="relative z-10 mx-auto max-w-xl">
+        {/* Hero Heading */}
+        <div className="mb-10 text-center">
+          <p className="logo-text mb-3 text-xs tracking-[0.25em] opacity-50">
+            Zero Gravity AI
+          </p>
+          <h1 className="text-4xl md:text-5xl font-black text-[#323232] leading-tight tracking-tight">
+            Find Matches.<br />
+            <span className="text-[#666]">Score, Tailor, Apply Faster.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-sm text-slate-300/80 md:text-base">
-            Minimal workflow: upload your resume or just use links, run the AI pipeline, and move directly to your personalized job dashboard.
+          <p className="mt-5 text-base text-[#666] leading-relaxed max-w-md mx-auto">
+            Upload your resume, configure your target, and let AI orchestrate your entire job search.
           </p>
         </div>
 
-        <div className="mx-auto max-w-2xl space-y-4">
-          <div
-            id="resume-drop-zone"
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-            className="cursor-pointer rounded-xl border border-dashed p-6 text-center transition-all"
-            style={{
-              borderColor: dragging || file ? "rgba(125,211,252,0.9)" : "rgba(148,163,184,0.4)",
-              background: dragging ? "rgba(14,116,144,0.25)" : "rgba(15,23,42,0.5)",
-            }}
-          >
-            <p className="text-base font-medium text-slate-100">
-              {file ? `Selected: ${file.name}` : "Drop resume PDF or click to upload (optional)"}
-            </p>
-            {file && (
-              <p className="mt-1 text-sm text-slate-300/75">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
-            )}
-            <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} id="resume-file-input" />
+        {/* Neo-Brutalist Form */}
+        <div className="neo-form">
+          <div className="text-lg font-black text-[#323232]">
+            Pipeline Config<br />
+            <span className="text-sm font-600 text-[#666]">fill in your details to start</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {/* Resume Upload */}
+          <div>
+            <label className="neo-label">Resume Source</label>
+            <div
+              id="resume-drop-zone"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              className="neo-dropzone"
+            >
+              <p className="text-sm font-semibold text-[#323232]">
+                {file ? `📄 ${file.name}` : "Drop resume PDF or click to upload"}
+              </p>
+              <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={onFileChange} />
+            </div>
+          </div>
+
+          {/* Role & Location */}
+          <div>
+            <label className="neo-label">Target Role</label>
             <input
-              id="role-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="Target role"
+              className="neo-input"
+              placeholder="e.g. Frontend Engineer"
               value={role}
               onChange={(e) => setRole(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="neo-label">Preferred Location</label>
             <input
-              id="location-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="Preferred location"
+              className="neo-input"
+              placeholder="e.g. Remote, New York"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
-            <input
-              id="github-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="GitHub URL (optional)"
-              value={github}
-              onChange={(e) => setGithub(e.target.value)}
-            />
-            <input
-              id="linkedin-url-input"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-              placeholder="LinkedIn Profile URL (optional)"
-              value={linkedinUrl}
-              onChange={(e) => setLinkedinUrl(e.target.value)}
-            />
+          </div>
+
+          {/* Social Links */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="neo-label">GitHub URL</label>
+              <input
+                id="github-input"
+                className="neo-input"
+                placeholder="https://github.com/..."
+                value={github}
+                onChange={(e) => setGithub(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="neo-label">LinkedIn URL</label>
+              <input
+                id="linkedin-url-input"
+                className="neo-input"
+                placeholder="https://linkedin.com/in/..."
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Work Style */}
+          <div>
+            <label className="neo-label">Work Style</label>
             <select
               id="remote-select"
-              className="rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              className="neo-select"
               value={remote}
               onChange={(e) => setRemote(e.target.value)}
             >
@@ -357,152 +384,48 @@ export default function OnboardingPage() {
             </select>
           </div>
 
-          <textarea
-            id="linkedin-input"
-            className="w-full resize-none rounded-lg border border-slate-600/60 bg-slate-900/55 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300"
-            rows={3}
-            placeholder="LinkedIn about text (optional)"
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-          />
-
-          <div className="rounded-xl border border-cyan-300/25 bg-slate-900/45 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-200/85">
-              Collected Info Preview
-            </p>
-            {!preview.hasAnyInput ? (
-              <p className="mt-2 text-sm text-slate-300/75">
-                Add GitHub/LinkedIn/role/location to preview what will be used in matching.
-              </p>
-            ) : (
-              <div className="mt-3 space-y-3 text-sm">
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">Role:</span> {preview.role}
-                  </p>
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">Location:</span> {preview.location}
-                  </p>
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">Remote:</span> {preview.remotePreference}
-                  </p>
-                  <p className="text-slate-300/85">
-                    <span className="text-slate-400">GitHub user:</span> {preview.githubUsername || "Not detected"}
-                  </p>
-                </div>
-
-                {preview.inferredSkills.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">Inferred skills</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {preview.inferredSkills.map((skill) => (
-                        <span key={skill} className="rounded-full bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-100">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {preview.linkedinKeywords.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">LinkedIn keywords</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {preview.linkedinKeywords.map((kw) => (
-                        <span key={kw} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-900">
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {collectedData?.github && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">GitHub API data</p>
-                    {collectedData.github.status === "ok" ? (
-                      <div className="space-y-1 text-slate-300/90">
-                        <p>
-                          <span className="text-slate-400">Username:</span> {collectedData.github.username}
-                        </p>
-                        <p>
-                          <span className="text-slate-400">Repos:</span> {collectedData.github.public_repos} ·{" "}
-                          <span className="text-slate-400">Followers:</span> {collectedData.github.followers} ·{" "}
-                          <span className="text-slate-400">Stars:</span> {collectedData.github.total_stars}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-amber-300">GitHub: {collectedData.github.reason ?? "Not available"}</p>
-                    )}
-                  </div>
-                )}
-
-                {collectedData?.linkedin && (
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">LinkedIn (Apify)</p>
-                    {collectedData.linkedin.status === "ok" ? (
-                      <div className="space-y-1 text-slate-300/90">
-                        <p><span className="text-slate-400">Name:</span> {collectedData.linkedin.full_name || "—"}</p>
-                        <p><span className="text-slate-400">Headline:</span> {collectedData.linkedin.headline || "—"}</p>
-                        <p><span className="text-slate-400">Location:</span> {collectedData.linkedin.location || "—"}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-amber-300">LinkedIn: {collectedData.linkedin.reason ?? "Not available"}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={collectFromLinks}
-                disabled={collectLoading}
-                className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-4 py-1.5 text-xs font-medium text-cyan-100 transition hover:bg-slate-800/70 disabled:opacity-60"
-              >
-                {collectLoading ? "Collecting..." : "Collect From Links"}
-              </button>
-              {collectError && <span className="text-xs text-red-300">{collectError}</span>}
-            </div>
+          {/* Extra Notes */}
+          <div>
+            <label className="neo-label">Additional Notes</label>
+            <textarea
+              id="linkedin-input"
+              className="neo-textarea"
+              rows={2}
+              placeholder="Paste LinkedIn About or hiring notes here..."
+              value={linkedin}
+              onChange={(e) => setLinkedin(e.target.value)}
+            />
           </div>
 
-          {error && (
-            <div className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {error}
-            </div>
-          )}
+          {/* Bash Terminal for Logs and Errors */}
+          <BashTerminal 
+            lines={logs} 
+            className="mt-6"
+          />
 
-          {loading && (
-            <div className="rounded-lg border border-cyan-300/30 bg-slate-900/50 px-4 py-3 text-sm text-slate-200">
-              <p className="mb-2 font-medium">Running AI pipeline...</p>
-              <div className="space-y-1.5">
-                {STEPS.map((step) => (
-                  <p key={step.id} className={currentStep >= step.id ? "text-cyan-200" : "text-slate-400"}>
-                    {currentStep > step.id ? "✓" : "•"} {step.label}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap justify-center gap-3 pt-1">
+          {/* Submit */}
+          <div className="flex items-center justify-between pt-6">
+            <span className="text-sm font-bold text-[#323232]">
+              ⚡ {loading ? "Pipeline Active" : "Ready to Orchestrate"}
+            </span>
             <button
-              id="analyze-btn"
               onClick={runPipeline}
               disabled={loading}
-              className="rounded-full border border-cyan-200/40 bg-slate-900/40 px-6 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-60"
+              className="neo-btn px-8"
             >
-              {loading ? "Processing..." : "Start Matching"}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="rounded-full bg-slate-100 px-6 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-white"
-            >
-              Open Dashboard
+              {loading ? "Running..." : "Let's go →"}
             </button>
           </div>
         </div>
+
+        {loading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+            <div className="max-w-xl w-full px-6 flex flex-col items-center">
+              <Loader message={STEPS[currentStep - 1]?.label || "Initializing..."} className="mb-8" />
+              <BashTerminal lines={logs} className="w-full" />
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

@@ -4,11 +4,18 @@ import Link from "next/link";
 import { listApplications, updateApplicationStatus } from "@/lib/api";
 import type { ApplicationRecord, ApplicationStatus } from "@/types/application";
 
-const STATUS_CONFIG: Record<ApplicationStatus, { label: string; cls: string; icon: string }> = {
-  Applied:   { label: "Applied",   cls: "badge-applied",   icon: "📨" },
-  Pending:   { label: "Pending",   cls: "badge-pending",   icon: "⏳" },
-  Interview: { label: "Interview", cls: "badge-interview", icon: "🎯" },
-  Rejected:  { label: "Rejected",  cls: "badge-rejected",  icon: "❌" },
+const STATUS_CONFIG: Record<ApplicationStatus, { label: string; color: string; bg: string; border: string; icon: string }> = {
+  Applied:   { label: "Applied",   color: "text-[#323232]", bg: "bg-white",  border: "border-[#323232]", icon: "📨" },
+  Pending:   { label: "Pending",   color: "text-[#323232]", bg: "bg-white",  border: "border-[#323232]", icon: "⏳" },
+  Interview: { label: "Interview", color: "text-[#323232]", bg: "bg-white",  border: "border-[#323232]", icon: "🎯" },
+  Rejected:  { label: "Rejected",  color: "text-[#323232]", bg: "bg-white",  border: "border-[#323232]", icon: "❌" },
+};
+
+const STAT_COLORS: Record<ApplicationStatus, string> = {
+  Interview: "text-[#2d8cf0]",
+  Pending:   "text-[#ff9900]",
+  Applied:   "text-[#323232]",
+  Rejected:  "text-[#ff4d4f]",
 };
 
 function ApplicationRow({ 
@@ -26,35 +33,31 @@ function ApplicationRow({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const cfg = STATUS_CONFIG[app.status];
-  const rowKey = app.app_id || `app-${index}`;
 
   return (
     <>
       <tr 
         id={`app-row-${app.app_id}`}
-        className="transition-colors duration-150"
-        style={{
-          borderBottom: !isExpanded && !isLast ? "1px solid rgba(148,163,184,0.15)" : "none",
-          animationDelay: `${index * 0.05}s`,
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = "rgba(34,211,238,0.05)")}
-        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-        <td className="px-4 py-4">
-          <span className="font-medium">{app.job_title}</span>
+        className="transition-colors border-b border-[#323232]/10 last:border-0 hover:bg-[#fcfcfc]"
+      >
+        <td className="px-6 py-5">
+          <span className="font-black text-[#323232]">{app.job_title}</span>
         </td>
-        <td className="px-4 py-4 text-slate-300/85">{app.company}</td>
-        <td className="px-4 py-4 text-slate-400">
+        <td className="px-6 py-5 text-[#666] font-bold">{app.company}</td>
+        <td className="px-6 py-5 text-[#999] font-bold">
           {new Date(app.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </td>
-        <td className="px-4 py-4">
-          <span className={`badge ${cfg.cls}`}>{cfg.icon} {cfg.label}</span>
+        <td className="px-6 py-5">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[10px] font-black uppercase border-2 ${cfg.border} ${cfg.color} ${cfg.bg}`}>
+            {cfg.icon} {cfg.label}
+          </span>
         </td>
-        <td className="px-4 py-4 flex items-center gap-2">
+        <td className="px-6 py-5 flex items-center gap-2">
           <select
             value={app.status}
             disabled={updatingId === app.app_id}
             onChange={(e) => onStatusChange(app.app_id, e.target.value as ApplicationStatus)}
-            className="rounded-lg border border-slate-600/70 bg-slate-900/45 px-2.5 py-1 text-xs text-slate-100"
+            className="neo-select !text-[10px] !py-1 !px-2"
           >
             {(["Applied", "Pending", "Interview", "Rejected"] as ApplicationStatus[]).map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -64,7 +67,7 @@ function ApplicationRow({
           {(app.outreach_draft || app.tailored_resume) && (
             <button 
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-[10px] uppercase font-bold text-cyan-400 hover:text-cyan-300 transition"
+              className="text-[10px] uppercase font-black text-[#2d8cf0] hover:underline"
             >
               {isExpanded ? "Hide" : "View"}
             </button>
@@ -72,27 +75,27 @@ function ApplicationRow({
         </td>
       </tr>
       {isExpanded && (
-        <tr className="bg-slate-900/30 border-b border-slate-700/40">
-          <td colSpan={5} className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up">
+        <tr className="bg-[#fcfcfc] border-b border-[#323232]/10">
+          <td colSpan={5} className="px-8 py-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {app.outreach_draft && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase text-slate-500 tracking-widest">Outreach Draft</h4>
-                  <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
-                    <p className="text-xs font-semibold text-slate-400 mb-1">Subject: {app.outreach_draft.subject}</p>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap line-clamp-6">{app.outreach_draft.email_body}</p>
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase text-[#999] tracking-widest">Outreach Draft</h4>
+                  <div className="p-4 rounded-[5px] bg-white border-2 border-[#323232] shadow-[3px_3px_#323232]">
+                    <p className="text-xs font-black text-[#323232] mb-1">Subject: {app.outreach_draft.subject}</p>
+                    <p className="text-sm text-[#666] font-bold whitespace-pre-wrap">{app.outreach_draft.email_body}</p>
                   </div>
                 </div>
               )}
               {app.tailored_resume && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase text-slate-500 tracking-widest">Tailored Resume</h4>
-                  <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
-                    <p className="text-sm text-slate-300 italic mb-2">Resume has been tailored for this role.</p>
-                    <p className="text-xs text-slate-400 font-semibold mb-1">Injected Keywords:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(app.tailored_resume.ats_keywords_injected || []).slice(0, 8).map((kw: string) => (
-                        <span key={kw} className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-200 border border-cyan-500/20">{kw}</span>
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase text-[#999] tracking-widest">Tailored Resume Assets</h4>
+                  <div className="p-4 rounded-[5px] bg-white border-2 border-[#323232] shadow-[3px_3px_#323232]">
+                    <p className="text-sm text-[#666] italic font-bold mb-3">Resume optimized for this specific role.</p>
+                    <p className="text-[10px] text-[#323232] font-black uppercase tracking-widest mb-2">Injected Keywords:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(app.tailored_resume.ats_keywords_injected || []).slice(0, 10).map((kw: string) => (
+                        <span key={kw} className="text-[9px] px-2 py-0.5 rounded-[3px] bg-[#f0f0f0] text-[#323232] border border-[#323232] font-black">{kw}</span>
                       ))}
                     </div>
                   </div>
@@ -153,62 +156,67 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#041423] text-slate-100">
-      <nav className="sticky top-0 z-50 backdrop-blur" style={{ borderBottom: "1px solid rgba(148,163,184,0.2)", background: "rgba(6,26,44,0.85)" }}>
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="text-xl font-semibold no-underline text-slate-100">
-            Zero Gravity
-          </Link>
-          <Link href="/dashboard" className="rounded-full border border-cyan-200/35 bg-slate-900/45 px-4 py-2 text-sm no-underline text-cyan-100 transition hover:bg-slate-800/80">
-            ← Dashboard
-          </Link>
-        </div>
-      </nav>
-
+    <main className="min-h-screen bg-[#fafafa] text-[#323232]">
       <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="mb-8 animate-slide-up">
-          <h1 className="text-3xl font-semibold">Application Tracker</h1>
-          <p className="text-sm mt-1 text-slate-300/75">Connected to backend application logs</p>
+        {/* Header */}
+        <div className="mb-10 border-b-2 border-[#323232] pb-8">
+          <h1 className="text-4xl font-black tracking-tight text-[#323232]">Application Tracker</h1>
+          <p className="text-base mt-2 text-[#666] font-bold">Track every application status in real time.</p>
         </div>
 
-        {loading && <p className="mb-5 text-sm text-slate-300/70">Loading applications...</p>}
-        {error && <p className="mb-5 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>}
+        {loading && <p className="mb-5 text-sm text-[#666] font-black uppercase tracking-widest">Loading applications...</p>}
+        {error && (
+          <div className="mb-6 rounded-[5px] border-2 border-[#323232] bg-white px-5 py-3 text-sm font-black text-[#323232] shadow-[4px_4px_#323232]">
+            ⚠️ {error}
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        {/* Stats row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
           {(["Interview", "Pending", "Applied", "Rejected"] as ApplicationStatus[]).map((s) => (
-            <div key={s} className="rounded-2xl border border-slate-700/60 bg-[#061a2c]/85 p-4 text-center animate-slide-up cursor-pointer"
+            <button
+              key={s}
               onClick={() => setFilterStatus(s)}
-              style={{ borderColor: filterStatus === s ? "rgba(34,211,238,0.8)" : "rgba(51,65,85,0.7)" }}>
-              <div className="text-2xl font-bold mb-1" style={{
-                color: s === "Interview" ? "#10d9a0" : s === "Pending" ? "#f59e0b" : s === "Applied" ? "#a78bfa" : "#ef4444"
-              }}>{counts[s]}</div>
-              <div className="text-xs text-slate-400">{s}</div>
-            </div>
+              className={`minimal-card p-5 text-center cursor-pointer transition-all ${
+                filterStatus === s ? 'ring-2 ring-[#2d8cf0] ring-offset-4' : ''
+              }`}
+            >
+              <div className={`text-3xl font-black mb-1 ${STAT_COLORS[s]}`}>
+                {counts[s]}
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#999]">{s}</div>
+            </button>
           ))}
         </div>
 
-        <div className="flex gap-2 flex-wrap mb-6">
+        {/* Filter tabs */}
+        <div className="flex gap-2 flex-wrap mb-8">
           {(["All", "Interview", "Pending", "Applied", "Rejected"] as const).map((s) => (
-            <button key={s} onClick={() => setFilterStatus(s)}
-              className="text-sm px-4 py-2 rounded-xl font-medium transition-all duration-200"
-              style={{
-                background: filterStatus === s ? "rgba(6,182,212,0.75)" : "rgba(255,255,255,0.04)",
-                color: filterStatus === s ? "#fff" : "var(--text-secondary)",
-                border: `1px solid ${filterStatus === s ? "transparent" : "rgba(148,163,184,0.25)"}`,
-              }}>
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              id={`status-tab-${s.toLowerCase()}`}
+              className={`text-sm px-5 py-2.5 rounded-[5px] font-black transition-all duration-200 border-2 ${
+                filterStatus === s
+                  ? 'bg-[#323232] text-white border-[#323232] shadow-[3px_3px_#000]'
+                  : 'bg-white text-[#666] border-[#323232] hover:bg-[#f0f0f0]'
+              }`}
+            >
               {s} {counts[s as keyof typeof counts]}
             </button>
           ))}
         </div>
 
-        <div className="rounded-2xl border border-slate-700/60 bg-[#061a2c]/85 overflow-hidden animate-slide-up">
+        {/* Table */}
+        <div className="minimal-card overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(148,163,184,0.2)" }}>
+                <tr className="border-b-2 border-[#323232]">
                   {["Job", "Company", "Applied", "Status", "Update"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: "rgba(226,232,240,0.75)" }}>{h}</th>
+                    <th key={h} className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-[#999]">
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -227,13 +235,17 @@ export default function ApplicationsPage() {
             </table>
 
             {visible.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-3xl mb-3">📭</p>
-                <p className="text-slate-300/85">No applications in this category</p>
+              <div className="text-center py-20">
+                <p className="text-4xl mb-4">📭</p>
+                <p className="text-[#999] font-black uppercase tracking-widest">No applications in this category</p>
               </div>
             )}
           </div>
         </div>
+
+        <p className="text-xs text-center mt-8 text-[#999] font-black uppercase tracking-widest">
+          Every status change updates backend state in real time.
+        </p>
       </div>
     </main>
   );
