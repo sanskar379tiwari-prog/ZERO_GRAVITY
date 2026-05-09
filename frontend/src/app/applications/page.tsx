@@ -72,6 +72,12 @@ function ApplicationRow({
         >
           Open Assets →
         </Link>
+        <button 
+          onClick={() => alert("Automated email feature coming soon!")}
+          className="text-[10px] uppercase font-black bg-[#323232] text-white px-3 py-1 rounded-[3px] hover:bg-black transition-colors"
+        >
+          Apply
+        </button>
       </td>
     </tr>
   );
