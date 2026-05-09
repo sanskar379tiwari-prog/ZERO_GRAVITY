@@ -5,6 +5,7 @@ import { UiverseInput } from "@/components/UiverseInput";
 import { TerminalCard } from "@/components/TerminalCard";
 import { Loader } from "@/components/Loader";
 import { StartButton } from "@/components/StartButton";
+import { TrueFocus } from "@/components/TrueFocus";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -280,13 +281,14 @@ export default function OnboardingPage() {
       <div className="relative mx-auto max-w-4xl rounded-2xl border border-cyan-300/20 bg-[#061a2c]/80 p-8 backdrop-blur-sm md:p-12">
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-3 text-sm tracking-wide text-cyan-200/80">Zero Gravity AI</p>
-          <h1 className="text-4xl font-semibold leading-tight text-slate-100 md:text-6xl">
-            Find Matches.
-            <br />
-            Score, Tailor,
-            <br />
-            Apply Faster.
-          </h1>
+          <TrueFocus 
+            sentence="Find Matches. Score, Tailor, Apply Faster."
+            blurAmount={4}
+            borderColor="#22d3ee"
+            glowColor="rgba(34, 211, 238, 0.4)"
+            animationDuration={0.6}
+            pauseBetweenAnimations={1.5}
+          />
           <p className="mx-auto mt-5 max-w-xl text-sm text-slate-300/80 md:text-base">
             Minimal workflow: upload your resume or just use links, run the AI pipeline, and move directly to your personalized job dashboard.
           </p>
