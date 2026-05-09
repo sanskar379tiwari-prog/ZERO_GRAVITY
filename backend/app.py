@@ -177,7 +177,7 @@ async def dashboard_match(req: MatchRequest):
 
 @app.get("/jobs", tags=["agent-2"])
 def list_jobs(query: str = "software engineer", location: str = "", remote: str = ""):
-    jobs = agent2_jobs.fetch(query=query, location=location)
+    jobs = agent2_jobs.fetch_batch([query], location=location)
     if remote.lower() == "true":
         jobs = [j for j in jobs if j.get("remote")]
     return jobs
