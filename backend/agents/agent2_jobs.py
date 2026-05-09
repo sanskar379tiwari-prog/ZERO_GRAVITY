@@ -1,5 +1,5 @@
-"""Agent 2 — Unified Multi-Source Job Discovery
-Aggregates jobs from JSearch and Adzuna.
+"""Agent 2 — Job Discovery (JSearch API Only)
+Aggregates jobs from JSearch.
 Includes Deduplication Layer and Schema Normalization.
 """
 import json
@@ -9,7 +9,6 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from usage import tracker
-from agents import agent2_adzuna
 
 load_dotenv(override=True)
 
@@ -18,7 +17,7 @@ MOCK_PATH = Path(__file__).resolve().parents[2] / "mock_jobs.json"
 
 def fetch_batch(queries: list, location: str = "", limit: int = 50) -> list:
     """
-    Fetch and aggregate jobs from multiple sources.
+    Fetch jobs from JSearch using multiple query variants.
     Includes Deduplication.
     """
     all_jobs = []
@@ -27,19 +26,14 @@ def fetch_batch(queries: list, location: str = "", limit: int = 50) -> list:
         queries = ["software engineer"]
 
     # 1. Fetch from JSearch
-    print(f"[Agent 2] Fetching from JSearch...")
-    jsearch_jobs = _fetch_jsearch_batch(queries, location, limit=limit//2 + 10)
+    print(f"[Agent 2] Fetching large-scale batch from JSearch...")
+    jsearch_jobs = _fetch_jsearch_batch(queries, location, limit=limit)
     all_jobs.extend(jsearch_jobs)
 
-    # 2. Fetch from Adzuna
-    print(f"[Agent 2] Fetching from Adzuna...")
-    adzuna_jobs = agent2_adzuna.fetch(queries[0], location=location, limit=limit//2 + 10)
-    all_jobs.extend(adzuna_jobs)
-
-    # 3. Deduplication Layer ⭐
+    # 2. Deduplication Layer ⭐ (Still useful if keyword variants overlap)
     unique_jobs = _deduplicate(all_jobs)
     
-    print(f"[Agent 2] Combined {len(all_jobs)} jobs. After deduplication: {len(unique_jobs)}")
+    print(f"[Agent 2] Total JSearch jobs acquired: {len(all_jobs)}. After deduplication: {len(unique_jobs)}")
     
     if not unique_jobs and not JSEARCH_API_KEY:
         print("[Agent 2] Using mock fallback.")
@@ -73,7 +67,12 @@ def _fetch_jsearch_batch(queries: list, location: str, limit: int) -> list:
         try:
             results = _jsearch_fetch(q, location, page=1)
             batch.extend(results)
-        except: pass
+            # Sleep slightly to respect rate limits during batch fetch
+            if len(queries) > 2:
+                time.sleep(0.5)
+        except Exception as e:
+            print(f"[Agent 2] variant '{q}' failed: {e}")
+            pass
     return batch
 
 def _jsearch_fetch(query: str, location: str, page: int) -> list:
@@ -117,7 +116,6 @@ def _mock() -> list:
     if MOCK_PATH.exists():
         with open(MOCK_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Add source to mock data
             for j in data: j["source"] = "Mock"
             return data
     return []
