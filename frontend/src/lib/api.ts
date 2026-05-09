@@ -10,9 +10,10 @@ interface MatchRequestProfile {
 
 export async function fetchMatchedJobs(
   profile: MatchRequestProfile & Record<string, unknown>,
+  searchQuery: string = ""
 ): Promise<JobMatch[]> {
   console.log(`[API] Calling: ${API_BASE}/api/match`);
-  const query = profile.roles?.[0] ?? "software engineer";
+  const query = searchQuery || profile.roles?.[0] || "software engineer";
   const location = profile.location ?? "";
   const response = await fetch(`${API_BASE}/api/match`, {
     method: "POST",
