@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { UiverseInput } from "@/components/UiverseInput";
 import { TerminalCard } from "@/components/TerminalCard";
+import { Loader } from "@/components/Loader";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
 
@@ -432,13 +433,14 @@ export default function OnboardingPage() {
           )}
 
           {loading && (
-            <div className="rounded-lg border border-cyan-300/30 bg-slate-900/50 px-4 py-3 text-sm text-slate-200">
-              <p className="mb-2 font-medium">Running AI pipeline...</p>
-              <div className="space-y-1.5">
+            <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-8 shadow-2xl">
+              <Loader message={STEPS[currentStep - 1]?.label || "Initializing Orchestrator..."} />
+              <div className="mt-4 flex justify-center gap-3">
                 {STEPS.map((step) => (
-                  <p key={step.id} className={currentStep >= step.id ? "text-cyan-200" : "text-slate-400"}>
-                    {currentStep > step.id ? "✓" : "•"} {step.label}
-                  </p>
+                  <div 
+                    key={step.id} 
+                    className={`h-1.5 w-12 rounded-full transition-all duration-500 ${currentStep >= step.id ? "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.6)]" : "bg-slate-700"}`}
+                  />
                 ))}
               </div>
             </div>

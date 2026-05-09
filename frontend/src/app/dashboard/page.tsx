@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createApplication, draftOutreachEmail, fetchMatchedJobs } from "@/lib/api";
 import { JobMatch } from "@/types/job";
 import { UiverseInput } from "@/components/UiverseInput";
+import { Loader } from "@/components/Loader";
 
 interface Profile {
   name?: string;
@@ -117,7 +118,14 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <div className="p-6 text-slate-300">Loading jobs...</div>;
+    return (
+      <main className="min-h-screen bg-[#041423] flex flex-col items-center justify-center p-6 text-slate-300">
+        <Loader message="Orchestrating High-Fidelity Job Matches..." />
+        <p className="mt-4 text-sm text-slate-500 max-w-md text-center">
+          Our AI is currently performing semantic analysis and ATS scoring across multiple sources to find your perfect fit.
+        </p>
+      </main>
+    );
   }
 
   if (error) {
