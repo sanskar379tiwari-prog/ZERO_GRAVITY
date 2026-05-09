@@ -11,7 +11,7 @@ from usage import tracker
 
 load_dotenv(override=True)
 _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = "gemini-1.5-flash"
+MODEL = "gemini-3.1-flash-lite"
 
 PROMPT = """You are an expert career coach and copywriter.
 Write a personalized cold-outreach email from a candidate to a recruiter/hiring manager.

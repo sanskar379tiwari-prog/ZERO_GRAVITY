@@ -10,7 +10,7 @@ def get_client():
     load_dotenv(override=True)
     return genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
 
-MODEL = "embedding-001"
+MODEL = "gemini-3.1-flash-lite"
 
 def get_embedding(text: str) -> list:
     """Get vector embedding for a string."""
