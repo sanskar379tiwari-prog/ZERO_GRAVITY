@@ -208,6 +208,13 @@ async def send_outreach_email(req: EmailSendRequest):
 def get_applications():
     return agent6_tracking.get_applications()
 
+@app.get("/applications/{app_id}", tags=["agent-6"])
+def get_single_app(app_id: str):
+    app = agent6_tracking.get_application(app_id)
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return app
+
 @app.post("/applications", tags=["agent-6"])
 async def create_app(req: ApplicationCreate):
     return agent6_tracking.create_application(**req.dict())

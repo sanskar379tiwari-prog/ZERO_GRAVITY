@@ -94,6 +94,19 @@ def get_applications() -> list:
     )
 
 
+def get_application(app_id: str) -> Optional[dict]:
+    """Retrieve a single application record by app_id."""
+    if _supabase:
+        try:
+            res = _supabase.table("applications").select("*").eq("app_id", app_id).execute()
+            if res.data:
+                return res.data[0]
+        except Exception as e:
+            print(f"❌ Supabase Single Fetch Error: {e}")
+
+    return _applications_mem.get(app_id)
+
+
 def update_status(app_id: str, status: str) -> Optional[dict]:
     """Update the status of an existing application."""
     if status not in VALID_STATUSES:
