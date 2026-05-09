@@ -81,6 +81,7 @@ export async function listApplications(): Promise<ApplicationRecord[]> {
 
   const data = (await response.json()) as unknown;
   if (!Array.isArray(data)) return [];
+  console.log("DEBUG: Fetched applications from DB:", data);
   return data.map((item) => normalizeApplication(item as Record<string, unknown>));
 }
 
