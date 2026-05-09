@@ -4,20 +4,48 @@
 
 ---
 
-## 🌐 Live Demo Available
+## 🌐 Live Demo Available — For Judges & Reviewers
 
-Zero Gravity is fully deployed and production-ready. Experience the orchestration pipeline in real time:
+**Zero Gravity is fully deployed and production-ready.** We **strongly encourage judges and reviewers** to visit and experience the orchestration pipeline in real time:
 
-### 🔗 [Try Zero Gravity Now](https://zero-gravity-eight.vercel.app/)
+### 🔗 **[⭐ Try Zero Gravity Now ⭐](https://zero-gravity-eight.vercel.app/)**
 
 **What you can test right now:**
-- Upload a resume and extract AI-powered structured profiles
-- Discover intelligently ranked job opportunities via semantic matching
-- View multi-factor "Gravity Score" reasoning
-- Generate ATS-tailored, job-specific resume sections
-- Experience live multi-agent orchestration in the terminal feed
-- Draft personalized outreach emails for target companies
-- Track applications with interview conflict detection
+- ✅ Upload a resume and extract AI-powered structured profiles
+- ✅ Discover intelligently ranked job opportunities via semantic matching
+- ✅ View multi-factor "Gravity Score" reasoning with explainable breakdown
+- ✅ **Generate ATS-tailored, job-specific resume sections** (our flagship feature)
+- ✅ Experience live multi-agent orchestration in the terminal feed
+- ✅ Draft personalized outreach emails for target companies
+- ✅ Track applications with interview conflict detection
+
+**→ The live demo is the best way to understand Zero Gravity's power. Please try it!**
+
+---
+
+## 🚀 Key Features
+
+### **Resume Tailoring** ⭐ **[OUR FLAGSHIP]**
+Zero Gravity's **signature feature** generates job-specific resume sections in real-time. Unlike generic resume builders, our AI:
+- Analyzes the target job description and extracts critical competencies
+- Rewrites your achievements to match role-specific terminology
+- Injects recruiter-optimized keywords for ATS system visibility
+- Maintains authenticity—no fabrication, only strategic highlighting
+- Outputs both markdown and production-ready PDF formats
+- Includes a side-by-side comparison view to see transformations
+
+### Multi-Agent Intelligence Pipeline
+- **Agent 0: GitHub Enrichment** — Analyzes repos to surface hidden technical skills
+- **Agent 1: Profile Extraction** — Transforms resume into structured, queryable JSON profiles
+- **Agent 2: Intelligent Discovery** — Semantic job search with parallel fetching
+- **Agent 3: Weighted Scoring** — Multi-factor "Gravity Score" matching algorithm
+- **Agent 5: Outreach Orchestrator** — Personalized company-aware cold emails
+- **Agent 6: Tracker & Conflict Detector** — Interview scheduling & conflict alerts
+
+### Neo-Minimalist Design
+- **High-Fidelity UI** with deliberate visual hierarchy and shadow-play
+- **Live Terminal Feed** for real-time agent execution observability
+- **Interactive Asset Viewer** for managing generated resumes and drafts
 
 ---
 
@@ -58,8 +86,23 @@ Combines **three orthogonal signals** into a 0–100% "Gravity Score":
 
 **Result**: Not just keyword-matching, but intelligent, human-interpretable match reasoning.
 
-### **Agent 4: Resume Tailoring** ✍️
-Generates job-specific resume sections and injects ATS-optimized keywords based on target job descriptions. Maintains your authentic experience while strategically highlighting role-relevant achievements. Outputs both raw markdown and production-ready PDF.
+### **Agent 4: Resume Tailoring** ✍️ ⭐ **[FLAGSHIP FEATURE]**
+Zero Gravity's **signature intelligence**: dynamically rewrites your resume for each target role.
+
+**How it works:**
+1. Parses the job description to identify critical skills, keywords, and competencies
+2. Maps your experience to role-specific terminology and frameworks
+3. Rewrites bullet points to emphasize role-relevant achievements
+4. Injects ATS-optimized keywords for recruiter system visibility
+5. Maintains authenticity—never fabricates, only strategically highlights
+
+**Outputs:**
+- Job-tailored resume markdown
+- Production-ready PDF with formatting
+- Side-by-side comparison (original vs. tailored) for transparency
+- Keyword injection report showing ATS optimizations
+
+This transforms generic resumes into precision instruments that speak the language of each recruiter system.
 
 ### **Agent 5: Outreach Orchestrator** 💌
 Drafts personalized cold emails and LinkedIn inquiries tailored to the company's specific role, pain points, and culture. Includes context-aware opening lines, value propositions, and soft CTAs. Persists drafts for review and scheduling.
@@ -331,7 +374,7 @@ This returns 20 pre-scored opportunities ranked by Gravity Score without requiri
 
 ---
 
-
+## 🤝 Contributing
 To contribute:
 
 1. Fork the repository
@@ -340,6 +383,7 @@ To contribute:
 4. Push to the branch (`git push origin feature/your-idea`)
 5. Open a pull request
 
+---
 
 ## 🎯 Our Mission
 
@@ -347,21 +391,19 @@ To eliminate the "zero gravity" phase of job hunting—the weightless, direction
 
 **Zero Gravity isn't a job board. It's a career copilot.**
 
+---
 
-## Acknowledgments
+##  Acknowledgments
 
 Built with:
-- Google Antigravity
 - [Google Gemini API](https://ai.google.dev/)
 - [FastAPI](https://fastapi.tiangolo.com/)
 - [Next.js](https://nextjs.org/)
 - [Supabase](https://supabase.com/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [JSearch API](https://rapidapi.com/laimoon/api/jsearch)
-- Google Antigravity
 
 ---
 
 
-
-**[Try Zero Gravity Now →](https://zero-gravity-eight.vercel.app/)**
+**[Try Zero Gravity Now →](https://zero-gravity-eight.vercel.app/?utm_source=chatgpt.com)**
